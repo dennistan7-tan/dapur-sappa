@@ -26,6 +26,7 @@ if (-not (git config user.email)) { git config user.email "dev.dericktan@gmail.c
 git fetch origin main
 if ($LASTEXITCODE -ne 0) { Write-Host "Gagal fetch dari GitHub (cek login)." -ForegroundColor Red; exit 1 }
 git reset origin/main | Out-Null      # samakan riwayat, file lokal tetap
+git checkout origin/main -- .github   # workflow Actions tetap dari GitHub
 git add -A
 git commit -m "Dapur Sappa $tag"
 git push origin main
