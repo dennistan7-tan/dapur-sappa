@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const C = window.Core, Store = window.Store, CFG = window.SAPPA_CONFIG, LS = Store.LS;
+  const LOGO = window.LOGO || 'logo.png';
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const D = () => Store.data;
@@ -81,7 +82,7 @@
     const ch = [];
     for (let i = 0; i < 7; i++) {
       const dn = C.DAYS[i];
-      if (base.days[i] !== m.days[i]) ch.push(dn + ': ' + (base.days[i] || 'Belum diisi') + ' → ' + (m.days[i] || 'Belum diisi'));
+      if (base.days[i] !== m.days[i]) ch.push(dn + ': ' + (base.days[i].replace(/\n/g, ' / ') || 'Belum diisi') + ' → ' + (m.days[i].replace(/\n/g, ' / ') || 'Belum diisi'));
       if (base.libur[i] !== m.libur[i]) ch.push(dn + ': ' + (m.libur[i] ? 'Libur' : 'Buka'));
     }
     if (base.price !== m.price) ch.push('Harga porsi ' + C.rp(base.price) + ' → ' + C.rp(m.price));
@@ -108,7 +109,7 @@
   // ---------- auth ----------
   function renderAuth(stage) {
     const users = D().users;
-    let h = '<div class="auth"><img src="logo.png" alt="Dapur Sappa" class="biglogo">';
+    let h = '<div class="auth"><img src="' + LOGO + '" alt="Dapur Sappa" class="biglogo">';
     if (stage === 'code') {
       h += `<h1>Selamat datang</h1><p class="mu">Masukkan kode toko untuk memakai aplikasi</p>
         <input id="code" class="in code" type="password" inputmode="numeric" maxlength="5" autocomplete="off">
@@ -135,7 +136,7 @@
     const tabs = tabsFor(me);
     const apk = CFG.GITHUB_USER ? `<a class="lnk" target="_blank" rel="noopener" href="https://github.com/${CFG.GITHUB_USER}/${CFG.GITHUB_REPO}/releases/latest">Unduh APK</a>` : '';
     const online = Store.status === 'Online';
-    return `<header class="top"><div class="brand"><img src="logo.png" alt=""><b>Dapur Sappa</b></div>
+    return `<header class="top"><div class="brand"><img src="${LOGO}" alt=""><b>Dapur Sappa</b></div>
       <div class="right"><span id="clock" class="clk"></span>
       <span class="sync ${online ? 'on' : ''}" title="${esc(Store.status)}">${online ? 'Online' : 'Lokal'}</span>
       <span class="who">${esc(me.name)} · ${esc(me.label)}</span>
@@ -247,8 +248,9 @@
   // ---------- Summary / detail ----------
   function dayCard(d) {
     const closed = d.libur && !d.orders.length;
-    const sub = d.menuName || (closed ? 'Libur · bisa dibuka untuk PO spesial' : 'Menu belum diisi');
-    return `<div class="card click" data-a="detail" data-v="${d.date}"><div class="row"><div><b>${C.dayName(d.date)} · ${C.dm(d.date)}</b><div class="mu">${esc(sub)}</div></div>${closed ? tag('Libur') : tag(d.pax + ' pax', d.pax ? 'ac' : '')}</div>${d.orders.length || d.cost > 0 ? `<div class="row"><span class="mu">Modal ${C.rp(d.cost)}</span><b class="${d.profit >= 0 ? 'okc' : 'acc'}">Profit ${C.rp(d.profit)}</b></div>` : (closed ? '' : '<div class="mu">Belum ada order</div>')}</div>`;
+    const ml = C.menuLines(d.menuName);
+    const menuHtml = ml.length ? ml.map((x) => `<div class="mn">${esc(x)}</div>`).join('') : `<div class="mn none">${closed ? 'Libur' : 'Menu belum diisi'}</div>${closed ? '<div class="mu sm">Bisa dibuka untuk PO spesial</div>' : ''}`;
+    return `<div class="card click" data-a="detail" data-v="${d.date}"><div class="row top"><div><div class="mu sm">${C.dayName(d.date)} · ${C.dm(d.date)}</div>${menuHtml}</div>${closed ? tag('Libur') : tag(d.pax + ' pax', d.pax ? 'ac' : '')}</div>${d.orders.length || d.cost > 0 ? `<div class="row"><span class="mu">Modal ${C.rp(d.cost)}</span><b class="${d.profit >= 0 ? 'okc' : 'acc'}">Profit ${C.rp(d.profit)}</b></div>` : (closed ? '' : '<div class="mu">Belum ada order</div>')}</div>`;
   }
   function vSummary(me) {
     const ws = st.weekStart || (st.weekStart = C.mondayOf(today()));
@@ -266,7 +268,7 @@
   }
   function vDetail(me) {
     const date = st.route.date; const d = C.day(D(), date);
-    let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>${C.dayLong(date)}</h2><p class="mu">${esc(d.menuName || 'Menu belum diisi')} · ${d.pax} pax · ${d.orders.length} order</p></div>`;
+    let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>${C.dayLong(date)}</h2><p class="mu">${esc(C.menuLines(d.menuName).join(' · ') || 'Menu belum diisi')} · ${d.pax} pax · ${d.orders.length} order</p></div>`;
     h += `<div class="g3">${tile('Omzet', C.rp(d.revenue))}${tile('Modal', C.rp(d.cost))}${tile('Profit', C.rp(d.profit), true)}</div>`;
     if (d.expCost > 0) h += `<p class="mu">Profit sudah dikurangi pengeluaran lain ${C.rp(d.expCost)} (${esc(d.expenses.map((e) => e.name).join(', '))}).</p>`;
     h += '<h3>Bahan dan kemasan</h3><div class="card"><table><tr><th>Bahan</th><th>Qty</th><th>Harga</th><th>Per porsi</th></tr>';
@@ -283,7 +285,7 @@
 
   // ---------- Laporan ----------
   function dayRow(d) {
-    return `<div class="card row click" data-a="detail" data-v="${d.date}"><div><b>${C.dayShort(d.date)}</b><div class="mu">${esc(d.menuName || '-')} · ${d.pax} pax</div></div><div class="r"><b class="${d.profit >= 0 ? 'okc' : 'acc'}">${C.rp(d.profit)}</b><div class="mu">Omzet ${C.rp(d.revenue)} · Modal ${C.rp(d.cost)}</div></div></div>`;
+    return `<div class="card row click" data-a="detail" data-v="${d.date}"><div><b>${C.dayShort(d.date)}</b><div class="mu">${esc(C.menuLines(d.menuName).join(' · ') || '-')} · ${d.pax} pax</div></div><div class="r"><b class="${d.profit >= 0 ? 'okc' : 'acc'}">${C.rp(d.profit)}</b><div class="mu">Omzet ${C.rp(d.revenue)} · Modal ${C.rp(d.cost)}</div></div></div>`;
   }
   function vLaporan() {
     const rm = st.repMonth || (st.repMonth = C.firstOfMonth(today()));
@@ -326,7 +328,9 @@
   // ---------- Menu ----------
   function menuInit(week) {
     const saved = D().menus[week]; const base = saved || { days: ['', '', '', '', '', '', ''], libur: [false, false, false, false, false, false, true], price: C.defaultPrice(D(), week) };
-    st.f.mn = { week, days: base.days.slice(), libur: base.libur.slice(), price: String(base.price), msg: '' };
+    const lines = [];
+    for (let i = 0; i < 7; i++) { const p = C.menuLines(base.days[i]); for (let j = 0; j < 3; j++) lines.push(p[j] || ''); }
+    st.f.mn = { week, lines, libur: base.libur.slice(), price: String(base.price), msg: '' };
   }
   function vMenu(me) {
     if (!st.f.mn) menuInit(C.mondayOf(today()));
@@ -335,7 +339,7 @@
     h += '<div class="card">';
     for (let i = 0; i < 7; i++) {
       const dt = C.addDays(f.week, i);
-      h += `<div class="mrow"><div class="dn"><b>${C.DAYS[i]}</b><div class="mu sm">${C.dm(dt)}</div></div><input class="in" data-bind="mn.d${i}" value="${esc(f.days[i])}" placeholder="${i === 6 ? 'Menu PO spesial' : 'Isi menu'}" ${ed ? '' : 'disabled'}>${chip('Libur', f.libur[i], ed ? 'mnlibur' : '', i)}</div>`;
+      h += `<div class="mrow"><div class="dn"><b>${C.DAYS[i]}</b><div class="mu sm">${C.dm(dt)}</div></div><div class="mlines">${[0, 1, 2].map((j) => `<input class="in" data-bind="mn.l${i * 3 + j}" value="${esc(f.lines[i * 3 + j])}" placeholder="${j === 0 && i === 6 ? 'Menu PO spesial' : ['Nasi / karbo', 'Lauk utama', 'Sayur / pendamping'][j]}" ${ed ? '' : 'disabled'}>`).join('')}</div>${chip('Libur', f.libur[i], ed ? 'mnlibur' : '', i)}</div>`;
     }
     h += '</div>' + banner('Minggu biasanya libur', 'Untuk PO menu spesial, matikan Libur dan isi menunya. Hari itu tampil seperti hari biasa.');
     h += field('Harga jual per porsi (Rp)', 'mn.price', f.price, `inputmode="numeric" data-num="1" ${ed ? '' : 'disabled'}`) + '<p class="mu">Harga bisa diubah per order saat mencatat order.</p>';
@@ -543,10 +547,10 @@
     // menu
     mnprev() { menuInit(C.addDays(st.f.mn.week, -7)); render(); }, mnnext() { menuInit(C.addDays(st.f.mn.week, 7)); render(); },
     mnlibur(v) { if (v === '') return; st.f.mn.libur[+v] = !st.f.mn.libur[+v]; keepRender(); },
-    mnsave() { const f = st.f.mn; saveMenu({ week: f.week, days: f.days.slice(), libur: f.libur.slice(), price: +f.price || 20000 }, D().menus[f.week], getMe()); f.msg = 'Menu tersimpan.'; keepRender(); },
+    mnsave() { const f = st.f.mn; saveMenu({ week: f.week, days: [0, 1, 2, 3, 4, 5, 6].map((i) => [0, 1, 2].map((j) => f.lines[i * 3 + j].trim()).filter((x) => x).join('\n')), libur: f.libur.slice(), price: +f.price || 20000 }, D().menus[f.week], getMe()); f.msg = 'Menu tersimpan.'; keepRender(); },
     mncopy() {
       const f = st.f.mn; const prev = D().menus[C.addDays(f.week, -7)];
-      if (prev) { f.days = prev.days.slice(); f.libur = prev.libur.slice(); f.price = String(prev.price); f.msg = 'Disalin. Tekan Simpan menu untuk menyimpan.'; } else f.msg = 'Minggu lalu belum ada menu.';
+      if (prev) { for (let i = 0; i < 7; i++) { const p = C.menuLines(prev.days[i]); for (let j = 0; j < 3; j++) f.lines[i * 3 + j] = p[j] || ''; } f.libur = prev.libur.slice(); f.price = String(prev.price); f.msg = 'Disalin. Tekan Simpan menu untuk menyimpan.'; } else f.msg = 'Minggu lalu belum ada menu.';
       keepRender();
     },
     // pengeluaran
@@ -587,7 +591,7 @@
     if (ns === 'of') st.f.of[k] = val;
     else if (ns === 'm') st.m[k] = val;
     else if (ns === 'sp') st.f.sp[k] = val;
-    else if (ns === 'mn') { if (/^d\d$/.test(k)) st.f.mn.days[+k[1]] = val; else st.f.mn[k] = val; }
+    else if (ns === 'mn') { if (/^l\d+$/.test(k)) st.f.mn.lines[+k.substring(1)] = val; else st.f.mn[k] = val; }
     else if (ns === 'ku') { if (/^n\d+$/.test(k)) st.f.ku.users[+k.substring(1)].name = val; else st.f.ku[k] = val; }
     if (ns === 'of' && (k === 'price')) { /* total diperbarui saat render berikutnya */ }
   }

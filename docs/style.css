@@ -52,3 +52,5 @@ table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--mu);fon
 .user{border:1px solid var(--ln);background:var(--sf);color:var(--tx);border-radius:14px;padding:12px;cursor:pointer;text-align:left;font:inherit}.user b{display:block}.user span{color:var(--mu);font-size:13px}
 .ovl{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
 .dlg{background:var(--sf);border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:90vh;overflow:auto}
+.mn{font-size:17px;font-weight:800;line-height:1.3}.mn.none{font-size:16px}.row.top{align-items:flex-start}
+.mlines{display:grid;gap:4px}.mrow{align-items:start}

@@ -144,7 +144,15 @@ fun MenuScreen(me: Me, data: AppData, onBack: () -> Unit) {
     var week by remember { mutableStateOf(Fmt.mondayOf(LocalDate.now())) }
     val saved = data.menus[week.toString()]
     val base = saved ?: Menu.empty(week.toString(), Calc.defaultPrice(data, week))
-    val days = remember(week, saved) { mutableStateListOf<String>().also { it.addAll(base.days) } }
+    // Tiap hari punya 3 baris isian menu (disimpan digabung dengan newline).
+    val lines = remember(week, saved) {
+        mutableStateListOf<String>().also { l ->
+            for (i in 0 until 7) {
+                val p = base.days[i].lines().map { it.trim() }.filter { it.isNotEmpty() }
+                for (j in 0 until 3) l.add(p.getOrElse(j) { "" })
+            }
+        }
+    }
     val libur = remember(week, saved) { mutableStateListOf<Boolean>().also { it.addAll(base.libur) } }
     var price by remember(week, saved) { mutableStateOf(base.price.toString()) }
     var savedMsg by remember { mutableStateOf("") }
@@ -168,10 +176,15 @@ fun MenuScreen(me: Me, data: AppData, onBack: () -> Unit) {
                             Strong(Fmt.dayName(week.plusDays(i.toLong())), size = 13)
                             Muted(Fmt.dayMon(week.plusDays(i.toLong())), size = 11)
                         }
-                        Field(
-                            if (libur[i]) "Libur" else "Menu", days[i], { days[i] = it },
-                            Modifier.weight(1f), placeholder = if (i == 6) "Menu PO spesial" else "Isi menu", enabled = editable,
-                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val hints = listOf("Nasi / karbo", "Lauk utama", "Sayur / pendamping")
+                            for (j in 0 until 3) {
+                                Field(
+                                    if (j == 0) (if (libur[i]) "Libur" else "Menu") else "", lines[i * 3 + j], { lines[i * 3 + j] = it },
+                                    Modifier.fillMaxWidth(), placeholder = if (j == 0 && i == 6) "Menu PO spesial" else hints[j], enabled = editable,
+                                )
+                            }
+                        }
                         Chip("Libur", libur[i]) { if (editable) libur[i] = !libur[i] }
                     }
                 }
@@ -184,13 +197,18 @@ fun MenuScreen(me: Me, data: AppData, onBack: () -> Unit) {
             if (editable) {
                 PrimaryButton("Simpan menu") {
                     val p = price.toLongOrNull() ?: 20000L
-                    Repo.saveMenu(Menu(week.toString(), days.toList(), libur.toList(), p), saved, me)
+                    val dayTexts = List(7) { i -> (0 until 3).map { lines[i * 3 + it].trim() }.filter { it.isNotEmpty() }.joinToString("\n") }
+                    Repo.saveMenu(Menu(week.toString(), dayTexts, libur.toList(), p), saved, me)
                     savedMsg = "Menu tersimpan."
                 }
                 OutlineButton("Salin dari minggu lalu") {
                     val prev = data.menus[week.minusWeeks(1).toString()]
                     if (prev != null) {
-                        for (i in 0 until 7) { days[i] = prev.days[i]; libur[i] = prev.libur[i] }
+                        for (i in 0 until 7) {
+                            val p = prev.days[i].lines().map { it.trim() }.filter { it.isNotEmpty() }
+                            for (j in 0 until 3) lines[i * 3 + j] = p.getOrElse(j) { "" }
+                            libur[i] = prev.libur[i]
+                        }
                         price = prev.price.toString()
                         savedMsg = "Disalin. Tekan Simpan menu untuk menyimpan."
                     } else savedMsg = "Minggu lalu belum ada menu."

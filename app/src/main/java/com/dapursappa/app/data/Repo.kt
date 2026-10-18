@@ -76,7 +76,7 @@ object Repo {
         for (i in 0 until 7) {
             val dn = Fmt.dayName(monday.plusDays(i.toLong()))
             if (base.days[i] != newM.days[i]) {
-                ch.add("$dn: ${base.days[i].ifBlank { "Belum diisi" }} → ${newM.days[i].ifBlank { "Belum diisi" }}")
+                ch.add("$dn: ${base.days[i].replace("\n", " / ").ifBlank { "Belum diisi" }} → ${newM.days[i].replace("\n", " / ").ifBlank { "Belum diisi" }}")
             }
             if (base.libur[i] != newM.libur[i]) ch.add("$dn: " + (if (newM.libur[i]) "Libur" else "Buka"))
         }

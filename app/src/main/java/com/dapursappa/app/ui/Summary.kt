@@ -104,14 +104,15 @@ fun DayCard(d: DayCalc, onClick: () -> Unit) {
     ClickCard(onClick = onClick) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Strong(Fmt.dayName(d.date) + " · " + Fmt.dayMon(d.date), size = 15)
-                Muted(
-                    when {
-                        d.menuName.isNotBlank() -> d.menuName
-                        closed -> "Libur · bisa dibuka untuk PO spesial"
-                        else -> "Menu belum diisi"
-                    },
-                )
+                Muted(Fmt.dayName(d.date) + " · " + Fmt.dayMon(d.date), size = 12)
+                val menuLines = d.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }
+                if (menuLines.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    for (ln in menuLines) Text(ln, color = c.text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 22.sp)
+                } else {
+                    Strong(if (closed) "Libur" else "Menu belum diisi", size = 16)
+                    if (closed) Muted("Bisa dibuka untuk PO spesial")
+                }
             }
             if (closed) Tag("Libur", c.surface2, c.text2)
             else Tag("${d.pax} pax", if (d.pax > 0) c.accentSoft else c.surface2, if (d.pax > 0) c.accentText else c.text2)
@@ -135,7 +136,7 @@ fun DetailHari(me: Me, data: AppData, date: LocalDate, onBack: () -> Unit, onOpe
     val c = Sappa.c
     val d = Calc.day(data, date)
     Column(Modifier.fillMaxSize()) {
-        SubHeader(Fmt.dayLong(date), (d.menuName.ifBlank { "Menu belum diisi" }) + " · ${d.pax} pax · ${d.orders.size} order", onBack)
+        SubHeader(Fmt.dayLong(date), (d.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" · ").ifBlank { "Menu belum diisi" }) + " · ${d.pax} pax · ${d.orders.size} order", onBack)
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

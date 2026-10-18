@@ -42,8 +42,13 @@ data class MonthCalc(
 object Calc {
     fun menuOf(d: AppData, date: LocalDate): Menu? = d.menus[Fmt.mondayOf(date).toString()]
 
-    fun menuName(d: AppData, date: LocalDate): String =
+    /** Menu mentah: tiap baris dipisah newline (maks 3 baris). */
+    fun menuRaw(d: AppData, date: LocalDate): String =
         menuOf(d, date)?.days?.getOrNull(date.dayOfWeek.value - 1).orEmpty()
+
+    /** Menu satu baris, baris dipisah " · ". */
+    fun menuName(d: AppData, date: LocalDate): String =
+        menuRaw(d, date).lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" · ")
 
     fun isLibur(d: AppData, date: LocalDate): Boolean {
         val m = menuOf(d, date)
@@ -76,7 +81,7 @@ object Calc {
         val kemasanCost = kemasan.sumOf { it.cost }
         val exps = d.expenses.filter { it.date == ds && !it.monthly }
         return DayCalc(
-            date, menuName(d, date), isLibur(d, date), orders, pax, revenue,
+            date, menuRaw(d, date), isLibur(d, date), orders, pax, revenue,
             bahan, bahanCost, kemasan, kemasanCost, exps, exps.sumOf { it.amount },
         )
     }

@@ -201,7 +201,9 @@
   };
 
   C.menuOf = (d, date) => d.menus[C.mondayOf(date)] || null;
-  C.menuName = (d, date) => { const m = C.menuOf(d, date); return m ? (m.days[C.dow(date) - 1] || '') : ''; };
+  C.menuRaw = (d, date) => { const m = C.menuOf(d, date); return m ? (m.days[C.dow(date) - 1] || '') : ''; };
+  C.menuLines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter((x) => x);
+  C.menuName = (d, date) => C.menuLines(C.menuRaw(d, date)).join(' · ');
   C.isLibur = (d, date) => { const m = C.menuOf(d, date); return m ? m.libur[C.dow(date) - 1] : C.dow(date) === 7; };
   C.defaultPrice = (d, date) => {
     const m = C.menuOf(d, date); if (m) return m.price;
@@ -231,7 +233,7 @@
     const expCost = expenses.reduce((s, e) => s + e.amount, 0);
     const cost = bahanCost + kemasanCost;
     return {
-      date, menuName: C.menuName(d, date), libur: C.isLibur(d, date), orders, pax, revenue, bahan, bahanCost,
+      date, menuName: C.menuRaw(d, date), libur: C.isLibur(d, date), orders, pax, revenue, bahan, bahanCost,
       kemasan, kemasanCost, expenses, expCost, cost, profit: revenue - cost - expCost, costPerPax: pax > 0 ? cost / pax : 0,
     };
   };
