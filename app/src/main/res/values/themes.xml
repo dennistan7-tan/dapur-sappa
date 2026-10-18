@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.DapurSappa" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#5A2D1C</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#FFF8F0</item>
+    </style>
+</resources>

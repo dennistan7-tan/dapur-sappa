@@ -1,0 +1,4 @@
+Dapur Sappa v0.3.1
+- Versi web untuk komputer (data sama dengan aplikasi)
+- Aplikasi otomatis memberi tahu kalau ada versi baru
+- Tombol "Buka versi web" di menu Lainnya
