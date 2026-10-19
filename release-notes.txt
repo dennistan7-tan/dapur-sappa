@@ -1,10 +1,3 @@
-Dapur Sappa v0.4.0
-- Order: pilih waktu pengantaran (Pagi/Siang/Sore/Malam + jam)
-- Order: satu customer bisa dibuat untuk beberapa hari sekaligus (mis. Selasa-Jumat)
-- Tombol + Tambah order pindah ke paling atas; kotak MENU HARI INI di atas Order
-- Tampilan berwarna per kategori (menu, uang, order, belanja)
-- Belanja dan pengeluaran lain digabung dalam satu tempat
-- User disederhanakan: User 1, User 2, dan Developer (login developer cukup password)
-- Summary: Total Pax, Omzet, Gross Profit, lalu menu; tombol LIGHT/DARK di atas
-- Laporan: margin harian, mingguan, bulanan; minggu di laporan bulanan bisa dibuka untuk data harian
-- Menu mingguan dan harga ada di paling atas menu Lainnya
+Dapur Sappa v0.4.1
+- Update langsung dari dalam aplikasi: tekan "Update sekarang", APK diunduh otomatis lalu muncul layar Pasang (tanpa buka browser)
+- Pertama kali, Android akan minta izin "Pasang aplikasi dari sumber ini" untuk Dapur Sappa: aktifkan, lalu kembali
