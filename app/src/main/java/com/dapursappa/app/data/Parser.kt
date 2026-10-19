@@ -43,8 +43,11 @@ object Parser {
         "lakban", "isolasi", "plastik", "stiker", "label", "korek",
     )
 
+    private val LAIN_WORDS = listOf("bensin", "bbm", "pertalite", "tambal", "parkir", "servis", "service", "ongkir", "ojek", "gojek", "grab", "oli")
+
     fun detectKind(name: String): Kind {
         val n = name.lowercase()
+        for (w in LAIN_WORDS) if (n.contains(w)) return Kind.LAIN
         val words = n.split(" ").filter { it.isNotEmpty() }
         if (words.contains("gas")) return Kind.BULANAN
         for (w in KEMASAN_WORDS) if (n.contains(w)) return Kind.KEMASAN

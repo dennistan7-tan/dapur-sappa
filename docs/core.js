@@ -92,10 +92,12 @@
   const DROP = ['rp', 'rp.', 'seharga', 'harga', 'beli', 'isi', 'x', '@', 'total', 'sebanyak'];
   const KEMASAN_WORDS = ['sterofoam', 'styrofoam', 'steroform', 'stereofoam', 'styrofom', 'sterofom', 'mika', 'cup', 'kertas nasi', 'sendok', 'garpu', 'sedotan', 'wadah', 'paper bowl', 'box', 'kotak nasi', 'tempat makan', 'alumunium foil', 'aluminium foil', 'foil'];
   const BULANAN_WORDS = ['kantong', 'kresek', 'elpiji', 'lpg', 'tisu', 'tissue', 'karet', 'tali', 'sabun', 'spons', 'lakban', 'isolasi', 'plastik', 'stiker', 'label', 'korek'];
-  C.KINDS = { BAHAN: 'Bahan harian', KEMASAN: 'Kemasan', BULANAN: 'Biaya bulanan' };
+  const LAIN_WORDS = ['bensin', 'bbm', 'pertalite', 'tambal', 'parkir', 'servis', 'service', 'ongkir', 'ojek', 'gojek', 'grab', 'tol ', 'oli'];
+  C.KINDS = { BAHAN: 'Bahan harian', KEMASAN: 'Kemasan', BULANAN: 'Biaya bulanan', LAIN: 'Pengeluaran lain' };
 
   C.detectKind = function (name) {
     const n = name.toLowerCase();
+    for (const w of LAIN_WORDS) if ((n + ' ').indexOf(w) >= 0) return 'LAIN';
     if (n.split(' ').indexOf('gas') >= 0) return 'BULANAN';
     for (const w of KEMASAN_WORDS) if (n.indexOf(w) >= 0) return 'KEMASAN';
     for (const w of BULANAN_WORDS) if (n.indexOf(w) >= 0) return 'BULANAN';
@@ -167,10 +169,12 @@
   };
 
   // ---------- model & kalkulasi ----------
-  C.defaultUsers = () => [
-    { name: 'User 1', role: 'Dapur' }, { name: 'User 2', role: 'Admin' },
-    { name: 'User 3', role: 'Dapur' }, { name: 'User 4', role: 'Admin' },
-  ];
+  C.defaultUsers = () => [{ name: 'User 1', role: 'User' }, { name: 'User 2', role: 'User' }];
+  // waktu pengantaran
+  C.SLOTS = [['PAGI', '07:00'], ['SIANG', '12:00'], ['SORE', '16:00'], ['MALAM', '19:00']];
+  C.slotTime = (s) => { const x = C.SLOTS.find((q) => q[0] === s); return x ? x[1] : ''; };
+  C.deliv = (o) => (o.slot ? o.slot + (o.time ? ' · ' + o.time : '') : (o.time || ''));
+  C.pct = (profit, rev) => (rev > 0 ? (Math.round(profit / rev * 1000) / 10).toString().replace('.', ',') + '%' : '-');
   C.orderPortions = (o) => (o.only ? 0 : (o.pax || 0));
   C.extrasTotal = (o) => (o.extras || []).reduce((s, e) => s + (e.q || 0) * (e.p || 0), 0);
   C.orderTotal = (o) => C.orderPortions(o) * (o.price || 0) + C.extrasTotal(o);
@@ -193,7 +197,7 @@
         }
         case 'e': if (!o.del) d.expenses.push(o); break;
         case 'a': d.audits.push(o); break;
-        case 'c': if (o.users && o.users.length) d.users = o.users.map((u) => ({ name: u.name, role: u.role || 'Dapur' })); break;
+        case 'c': if (o.users && o.users.length) d.users = o.users.slice(0, 2).map((u) => ({ name: u.name, role: 'User' })); break;
       }
     });
     d.audits.sort((a, b) => b.ts - a.ts);

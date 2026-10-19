@@ -75,10 +75,32 @@ fun AppHeader() {
     }
 }
 
+/** Kategori warna: menu, uang, order, belanja, pengeluaran. */
+enum class Tone { Neutral, Menu, Money, Order, Shop, Spend }
+
+@Composable
+fun toneBg(t: Tone): Color {
+    val c = Sappa.c
+    return when (t) {
+        Tone.Neutral -> c.surface; Tone.Menu -> c.menuBg; Tone.Money -> c.moneyBg
+        Tone.Order -> c.orderBg; Tone.Shop -> c.shopBg; Tone.Spend -> c.spendBg
+    }
+}
+
+@Composable
+fun toneLine(t: Tone): Color {
+    val c = Sappa.c
+    return when (t) {
+        Tone.Neutral -> c.border; Tone.Menu -> c.menuLine; Tone.Money -> c.moneyLine
+        Tone.Order -> c.orderLine; Tone.Shop -> c.shopLine; Tone.Spend -> c.spendLine
+    }
+}
+
 @Composable
 fun SCard(
     modifier: Modifier = Modifier,
     background: Color? = null,
+    tone: Tone = Tone.Neutral,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Sappa.c
@@ -87,24 +109,28 @@ fun SCard(
         modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(background ?: c.surface)
-            .border(1.dp, c.border, shape)
+            .background(background ?: toneBg(tone))
+            .border(1.dp, if (background != null) c.border else toneLine(tone), shape)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         content = content,
     )
 }
 
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier, highlight: Boolean = false) {
+fun StatTile(label: String, value: String, modifier: Modifier = Modifier, highlight: Boolean = false, tone: Tone = Tone.Money) {
     val c = Sappa.c
+    val shape = RoundedCornerShape(14.dp)
+    val bg = if (highlight) c.okSolid else toneBg(tone)
+    val fg = if (highlight) c.onOkSolid else c.text
     Column(
         modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (highlight) c.accentSoft else c.surface2)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, if (highlight) c.okSolid else toneLine(tone), shape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text(label, color = if (highlight) c.accentText else c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Text(value, color = if (highlight) c.accentText else c.text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, color = if (highlight) c.onOkSolid else c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = fg, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 

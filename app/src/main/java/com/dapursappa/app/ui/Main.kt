@@ -43,7 +43,6 @@ enum class Tab(val label: String, val icon: ImageVector) {
 sealed class Route {
     data class Detail(val date: LocalDate) : Route()
     data class OrderEdit(val id: String?, val date: LocalDate) : Route()
-    data class Spend(val date: LocalDate) : Route()
     object MenuEdit : Route()
     object Riwayat : Route()
     object Kelola : Route()
@@ -59,11 +58,12 @@ fun MainScreen(
     onSwitchUser: () -> Unit,
 ) {
     val c = Sappa.c
-    val tabs = if (me.canAdmin) Tab.values().toList() else listOf(Tab.BELANJA, Tab.SUMMARY, Tab.LAINNYA)
-    val start = when {
-        me.isDev -> Tab.SUMMARY
-        me.canAdmin -> Tab.ORDER
-        else -> Tab.BELANJA
+    val tabs = Tab.values().toList()
+    val start = Tab.SUMMARY
+    val dark = when (themeMode) {
+        1 -> false
+        2 -> true
+        else -> androidx.compose.foundation.isSystemInDarkTheme()
     }
     var tab by remember(me.idx, me.isDev) { mutableStateOf(start) }
     var route by remember { mutableStateOf<Route?>(null) }
@@ -105,7 +105,6 @@ fun MainScreen(
                 when (r) {
                     is Route.Detail -> DetailHari(me, data, r.date, { route = null }, { id -> route = Route.OrderEdit(id, r.date) })
                     is Route.OrderEdit -> OrderForm(me, data, r.id, r.date) { route = null }
-                    is Route.Spend -> ExpenseScreen(me, data, r.date) { route = null }
                     Route.MenuEdit -> MenuScreen(me, data) { route = null }
                     Route.Riwayat -> RiwayatScreen(data) { route = null }
                     Route.Kelola -> KelolaUserScreen(me, data, prefs) { route = null }
@@ -115,17 +114,16 @@ fun MainScreen(
                     Tab.BELANJA -> BelanjaTab(me, data)
                     Tab.ORDER -> OrderTab(me, data, orderDate, { orderDate = it }, { id, d -> route = Route.OrderEdit(id, d) })
                     Tab.SUMMARY -> SummaryTab(
-                        me, data, weekStart, { weekStart = it },
-                        { d -> route = Route.Detail(d) }, { route = Route.Spend(LocalDate.now()) },
+                        data, weekStart, { weekStart = it },
+                        { d -> route = Route.Detail(d) }, dark, { onThemeMode(if (dark) 1 else 2) },
                     )
                     Tab.LAPORAN -> LaporanTab(
                         data, repTab, { repTab = it }, repMonth, { repMonth = it.withDayOfMonth(1) },
                         repWeek, { repWeek = it }, { d -> route = Route.Detail(d) },
                     )
                     Tab.LAINNYA -> MoreTab(
-                        me, prefs, themeMode, onThemeMode, onSwitchUser,
-                        { route = Route.MenuEdit }, { route = Route.Riwayat },
-                        { route = Route.Spend(LocalDate.now()) }, { route = Route.Kelola },
+                        me, prefs, onSwitchUser,
+                        { route = Route.MenuEdit }, { route = Route.Riwayat }, { route = Route.Kelola },
                     )
                 }
             }

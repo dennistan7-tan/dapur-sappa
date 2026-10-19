@@ -29,6 +29,19 @@ data class SappaColors(
     val okSoft: Color,
     val warn: Color,
     val warnSoft: Color,
+    // warna kategori
+    val menuBg: Color,
+    val menuLine: Color,
+    val moneyBg: Color,
+    val moneyLine: Color,
+    val orderBg: Color,
+    val orderLine: Color,
+    val shopBg: Color,
+    val shopLine: Color,
+    val spendBg: Color,
+    val spendLine: Color,
+    val okSolid: Color,
+    val onOkSolid: Color,
 )
 
 val LightSappa = SappaColors(
@@ -38,6 +51,12 @@ val LightSappa = SappaColors(
     accent = Color(0xFFD93A58), accentSoft = Color(0xFFFBE1E7), accentText = Color(0xFFB02A47),
     onAccent = Color(0xFFFFFFFF), ok = Color(0xFF3F6B1E), okSoft = Color(0xFFE6EFD3),
     warn = Color(0xFF8A4F00), warnSoft = Color(0xFFFCE9C4),
+    menuBg = Color(0xFFFDEADF), menuLine = Color(0xFFF2C7B3),
+    moneyBg = Color(0xFFE7F2DB), moneyLine = Color(0xFFBFDBA8),
+    orderBg = Color(0xFFE5EDF9), orderLine = Color(0xFFBCCFEC),
+    shopBg = Color(0xFFFFF3D3), shopLine = Color(0xFFEBD593),
+    spendBg = Color(0xFFF6E4EF), spendLine = Color(0xFFE0BDD3),
+    okSolid = Color(0xFF3F6B1E), onOkSolid = Color(0xFFFFFFFF),
 )
 
 val DarkSappa = SappaColors(
@@ -47,6 +66,12 @@ val DarkSappa = SappaColors(
     accent = Color(0xFFF0637E), accentSoft = Color(0xFF4C2432), accentText = Color(0xFFFFA3B5),
     onAccent = Color(0xFF2B0F18), ok = Color(0xFFB5D681), okSoft = Color(0xFF2F3B1D),
     warn = Color(0xFFF4C873), warnSoft = Color(0xFF493818),
+    menuBg = Color(0xFF3A2420), menuLine = Color(0xFF5C3B33),
+    moneyBg = Color(0xFF243020), moneyLine = Color(0xFF3D5433),
+    orderBg = Color(0xFF1F2A3A), orderLine = Color(0xFF344A6B),
+    shopBg = Color(0xFF3A3118), shopLine = Color(0xFF5D4F25),
+    spendBg = Color(0xFF35222F), spendLine = Color(0xFF58384C),
+    okSolid = Color(0xFF7FCB8F), onOkSolid = Color(0xFF10210F),
 )
 
 val LocalSappa = staticCompositionLocalOf { LightSappa }

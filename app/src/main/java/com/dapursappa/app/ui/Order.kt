@@ -54,19 +54,20 @@ fun OrderTab(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Banner(if (date == LocalDate.now()) "Menu hari ini" else "Menu", menuBanner(data, date))
+        PrimaryButton("+  Tambah order") { onOpen(null, date) }
+        MenuBox(data, date, if (date == LocalDate.now()) "MENU HARI INI" else "MENU")
         NavBar("Order", Fmt.dayLong(date), { onDate(date.minusDays(1)) }, { onDate(date.plusDays(1)) })
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile("Order", orders.size.toString(), Modifier.weight(1f))
-            StatTile("Porsi", pax.toString(), Modifier.weight(1f))
+            StatTile("Order", orders.size.toString(), Modifier.weight(1f), tone = Tone.Order)
+            StatTile("Porsi", pax.toString(), Modifier.weight(1f), tone = Tone.Order)
             StatTile("Omzet", Fmt.rp(omzet), Modifier.weight(1.4f), highlight = true)
         }
 
         SectionTitle("Daftar order")
         if (orders.isEmpty()) Muted("Belum ada order di tanggal ini.", modifier = Modifier.padding(vertical = 8.dp))
         for (o in orders) {
-            ClickCard(onClick = { onOpen(o.id, date) }) {
+            ClickCard(onClick = { onOpen(o.id, date) }, tone = Tone.Order) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Strong(o.customer, size = 15)
                     Strong(Fmt.rp(o.total), size = 15)
@@ -79,6 +80,7 @@ fun OrderTab(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
                     if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
                     else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
                     if (o.paid) Tag("Lunas", c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
@@ -99,9 +101,25 @@ fun OrderTab(
                 Muted("${unpaid.size} order belum lunas", color = c.warn)
             }
         }
-        PrimaryButton("+  Tambah order") { onOpen(null, date) }
         Spacer(Modifier.height(8.dp))
     }
+}
+
+private val SLOTS = listOf("PAGI" to "07:00", "SIANG" to "12:00", "SORE" to "16:00", "MALAM" to "19:00")
+
+/** Rapikan jam: "1600", "16.00", "16:0" -> "16:00". Kosong = tanpa jam. Null = tidak valid. */
+private fun normTime(s: String): String? {
+    val t = s.trim()
+    if (t.isEmpty()) return ""
+    val parts = t.split(':', '.')
+    val (h, m) = if (parts.size >= 2) parts[0] to parts[1] else {
+        val d = t.filter { it.isDigit() }
+        if (d.length <= 2) d to "0" else d.dropLast(2) to d.takeLast(2)
+    }
+    val hh = h.toIntOrNull() ?: return null
+    val mm = m.toIntOrNull() ?: return null
+    if (hh !in 0..23 || mm !in 0..59) return null
+    return "%02d:%02d".format(hh, mm)
 }
 
 @Composable
@@ -109,6 +127,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     val c = Sappa.c
     val old = remember(orderId) { data.orders.firstOrNull { it.id == orderId } }
     var dt by remember { mutableStateOf(old?.let { LocalDate.parse(it.date) } ?: date) }
+    val days = remember { mutableStateListOf<LocalDate>().also { it.add(old?.let { o -> LocalDate.parse(o.date) } ?: date) } }
     var customer by remember { mutableStateOf(old?.customer ?: "") }
     var location by remember { mutableStateOf(old?.location ?: "") }
     var pax by remember { mutableStateOf(old?.pax ?: 1) }
@@ -117,6 +136,8 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     var remarks by remember { mutableStateOf(old?.remarks ?: "") }
     var onlyExtra by remember { mutableStateOf(old?.onlyExtra ?: false) }
     var paid by remember { mutableStateOf(old?.paid ?: false) }
+    var slot by remember { mutableStateOf(old?.slot ?: "") }
+    var time by remember { mutableStateOf(old?.time ?: "") }
     var showExtra by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var confirmDel by remember { mutableStateOf(false) }
@@ -126,6 +147,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     val portions = if (onlyExtra) 0 else pax
     val extraTotal = extras.sumOf { it.total }
     val total = portions * priceL + extraTotal
+    val nd = if (old != null) 1 else maxOf(1, days.size)
 
     Column(Modifier.fillMaxSize()) {
         SubHeader(if (old == null) "Order baru" else "Edit order", menuBanner(data, dt), onClose)
@@ -133,9 +155,46 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ChipScroll { Chip("Tanggal kirim: " + Fmt.dayShort(dt), true) { pickDate = true } }
+            if (old != null) {
+                ChipScroll { Chip("Tanggal kirim: " + Fmt.dayShort(dt), true) { pickDate = true } }
+            } else {
+                val mon = Fmt.mondayOf(dt)
+                ChipScroll { Chip("Pilih minggu: " + Fmt.dayShort(dt), true) { pickDate = true } }
+                Muted("Hari kirim (boleh lebih dari satu)")
+                ChipFlow {
+                    for (i in 0 until 7) {
+                        val d = mon.plusDays(i.toLong())
+                        Chip(Fmt.dayName(d).take(3) + " " + d.dayOfMonth, days.contains(d)) {
+                            if (days.contains(d)) days.remove(d) else days.add(d)
+                            days.sort()
+                            if (days.isNotEmpty()) dt = days.first()
+                        }
+                    }
+                    Chip("Sen–Jum", false) { days.clear(); for (i in 0 until 5) days.add(mon.plusDays(i.toLong())); dt = days.first() }
+                    Chip("Sen–Sab", false) { days.clear(); for (i in 0 until 6) days.add(mon.plusDays(i.toLong())); dt = days.first() }
+                }
+                Muted("${days.size} hari dipilih. Satu nama customer, order yang sama dibuat untuk tiap hari.")
+            }
             Field("Nama customer", customer, { customer = it; error = "" })
             Field("Lokasi", location, { location = it }, placeholder = "mis. Blok C3 No.5")
+
+            Muted("Waktu pengantaran")
+            ChipScroll {
+                SLOTS.forEach { (name, def) ->
+                    Chip(name, slot == name) {
+                        if (slot == name) { slot = ""; time = "" }
+                        else {
+                            val prevDef = SLOTS.firstOrNull { it.first == slot }?.second
+                            if (time.isBlank() || time == prevDef) time = def
+                            slot = name
+                        }
+                        error = ""
+                    }
+                }
+            }
+            if (slot.isNotEmpty()) {
+                Field("Jam antar ($slot)", time, { time = it.filter { ch -> ch.isDigit() || ch == ':' || ch == '.' }.take(5); error = "" }, keyboard = KeyboardType.Number, placeholder = "mis. 16:00")
+            }
 
             Muted("Jenis order")
             ChipScroll {
@@ -174,7 +233,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                 Chip("Belum bayar", !paid) { paid = false }
             }
 
-            SCard(background = c.surface2) {
+            SCard(tone = Tone.Money) {
                 if (!onlyExtra) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Muted("Porsi $pax × ${Fmt.rp(priceL)}", size = 13); Strong(Fmt.rp(pax * priceL))
@@ -187,26 +246,38 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                 }
                 Rule()
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Strong("Total order", size = 16); Strong(Fmt.rp(total), size = 16, color = c.accentText)
+                    Strong("Total per hari", size = 16); Strong(Fmt.rp(total), size = 16, color = c.accentText)
+                }
+                if (nd > 1) {
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Strong("Total $nd hari", size = 16); Strong(Fmt.rp(total * nd), size = 16, color = c.accentText)
+                    }
                 }
             }
             if (portions > 0) Muted("Kemasan ikut terpotong $portions pcs per jenis kemasan.")
             if (error.isNotEmpty()) Muted(error, color = c.accentText)
 
-            PrimaryButton("Simpan order") {
+            PrimaryButton(if (nd > 1) "Simpan $nd order" else "Simpan order") {
+                val tn = if (slot.isEmpty()) "" else normTime(time)
                 if (customer.isBlank()) {
                     error = "Nama customer harus diisi."
                 } else if (!onlyExtra && priceL <= 0) {
                     error = "Harga per porsi harus diisi."
                 } else if (onlyExtra && extras.isEmpty()) {
                     error = "Lauk saja butuh minimal 1 pesanan tambahan."
+                } else if (old == null && days.isEmpty()) {
+                    error = "Pilih minimal 1 hari kirim."
+                } else if (tn == null) {
+                    error = "Jam antar tidak valid. Contoh: 16:00"
                 } else {
-                    val o = Order(
-                        id = old?.id ?: Store.newId(), date = dt.toString(), customer = customer.trim(),
+                    fun mk(id: String, d: LocalDate) = Order(
+                        id = id, date = d.toString(), customer = customer.trim(),
                         location = location.trim(), pax = if (onlyExtra) 0 else pax, remarks = remarks.trim(),
                         portionPrice = priceL, extras = extras.toList(), paid = paid, onlyExtra = onlyExtra, by = old?.by ?: me.idx,
+                        slot = slot, time = tn,
                     )
-                    Repo.saveOrder(o, old, me)
+                    if (old != null) Repo.saveOrder(mk(old.id, dt), old, me)
+                    else Repo.saveOrders(days.sorted().map { mk(Store.newId(), it) }, me)
                     onClose()
                 }
             }
@@ -220,7 +291,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
         }
     }
 
-    if (pickDate) DatePickDialog(dt, { dt = it }, { pickDate = false })
+    if (pickDate) DatePickDialog(dt, { dt = it; if (old == null) { days.clear(); days.add(it) } }, { pickDate = false })
     if (showExtra) ExtraDialog(onSave = { extras.add(it); showExtra = false }, onDismiss = { showExtra = false })
     if (confirmDel && old != null) {
         AlertDialog(

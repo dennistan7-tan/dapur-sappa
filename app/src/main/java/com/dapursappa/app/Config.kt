@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 object Config {
     // Samakan dengan versionName di app/build.gradle.kts
-    const val APP_VERSION = "0.3.2"
+    const val APP_VERSION = "0.4.0"
 
     // Kode toko disimpan sebagai hash.
     private const val CODE_SHA256 = "c90117a86df5ad6cff0574e82abc47165bc43d412365f33075da2a369c2c992f"
@@ -24,8 +24,6 @@ object Config {
     const val GITHUB_REPO = "dapur-sappa"
     val updateEnabled: Boolean get() = GITHUB_USER.isNotEmpty()
     val WEB_URL: String get() = "https://$GITHUB_USER.github.io/$GITHUB_REPO/"
-
-    val ROLES = listOf("Dapur", "Admin", "Dapur", "Admin")
 
     fun sha256(s: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(s.toByteArray())

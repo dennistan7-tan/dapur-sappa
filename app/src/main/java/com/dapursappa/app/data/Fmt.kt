@@ -32,6 +32,8 @@ object Fmt {
 
     fun thousands(v: Long): String = NumberFormat.getIntegerInstance(ID).format(v)
 
+    fun pct(profit: Long, rev: Long): String = if (rev > 0) String.format(ID, "%.1f%%", profit * 100.0 / rev) else "-"
+
     fun dayLong(d: LocalDate): String = d.format(dLong)
     fun dayName(d: LocalDate): String = d.format(dDay)
     fun dayMon(d: LocalDate): String = d.format(dMon)

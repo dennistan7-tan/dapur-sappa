@@ -5,7 +5,7 @@ import java.time.LocalDate
 /** Semua perubahan data lewat sini supaya otomatis tercatat di Riwayat. */
 object Repo {
     fun log(me: Me, cat: String, title: String, detail: String) {
-        Store.put(Audit(Store.newId(), System.currentTimeMillis(), "${me.name} · ${me.label}", cat, title, detail).toJson())
+        Store.put(Audit(Store.newId(), System.currentTimeMillis(), if (me.isDev) "Developer" else me.name, cat, title, detail).toJson())
     }
 
     fun savePurchase(p: Purchase, old: Purchase?, me: Me) {
@@ -46,7 +46,22 @@ object Repo {
             if (old.onlyExtra != o.onlyExtra) ch.add(if (o.onlyExtra) "Jadi lauk saja" else "Jadi porsi")
             if (old.date != o.date) ch.add("Tanggal ${old.date} → ${o.date}")
             if (old.remarks != o.remarks) ch.add("Remarks diubah")
+            if (old.delivery != o.delivery) ch.add("Waktu antar ${old.delivery.ifBlank { "-" }} → ${o.delivery.ifBlank { "-" }}")
             if (ch.isNotEmpty()) log(me, "Order", "Edit order ${o.customer}", ch.joinToString("\n"))
+        }
+    }
+
+    /** Simpan beberapa order sekaligus (satu customer, beberapa hari). */
+    fun saveOrders(list: List<Order>, me: Me) {
+        if (list.isEmpty()) return
+        list.forEach { Store.put(it.toJson()) }
+        val f = list.first()
+        val dl = if (f.delivery.isNotBlank()) " · " + f.delivery else ""
+        if (list.size == 1) {
+            log(me, "Order", "Tambah order ${f.customer}", orderLine(f) + dl)
+        } else {
+            val days = list.joinToString(", ") { Fmt.dayName(LocalDate.parse(it.date)) + " " + Fmt.dayMon(LocalDate.parse(it.date)) }
+            log(me, "Order", "Tambah order ${f.customer} · ${list.size} hari", days + "\n" + orderLine(f) + " per hari" + dl)
         }
     }
 
@@ -86,6 +101,6 @@ object Repo {
 
     fun saveUsers(users: List<UserCfg>, me: Me) {
         Store.put(usersToJson(users))
-        log(me, "User", "Ubah daftar user", users.joinToString(", ") { "${it.name} (${it.role})" })
+        log(me, "User", "Ubah nama user", users.joinToString(", ") { it.name })
     }
 }

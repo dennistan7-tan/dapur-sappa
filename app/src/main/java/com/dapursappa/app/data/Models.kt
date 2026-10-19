@@ -1,6 +1,5 @@
 package com.dapursappa.app.data
 
-import com.dapursappa.app.Config
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -8,11 +7,13 @@ enum class Kind(val label: String) {
     BAHAN("Bahan harian"),
     KEMASAN("Kemasan"),
     BULANAN("Biaya bulanan"),
+    LAIN("Pengeluaran lain"),
 }
 
 data class Me(val idx: Int, val isDev: Boolean, val name: String, val role: String) {
-    val canAdmin: Boolean get() = isDev || role == "Admin"
-    val label: String get() = if (isDev) "Developer" else role
+    // Semua user punya akses penuh (dapur dan admin digabung).
+    val canAdmin: Boolean get() = true
+    val label: String get() = if (isDev) "Developer" else "User"
 }
 
 data class UserCfg(val name: String, val role: String)
@@ -64,7 +65,10 @@ data class Order(
     val onlyExtra: Boolean,
     val by: Int,
     val deleted: Boolean = false,
+    val slot: String = "",
+    val time: String = "",
 ) {
+    val delivery: String get() = if (slot.isNotBlank()) slot + (if (time.isNotBlank()) " · $time" else "") else time
     val portions: Int get() = if (onlyExtra) 0 else pax
     val extrasTotal: Long get() = extras.sumOf { it.total }
     val total: Long get() = portions * portionPrice + extrasTotal
@@ -79,6 +83,7 @@ data class Order(
             .put("location", location).put("pax", pax).put("remarks", remarks)
             .put("price", portionPrice).put("extras", arr).put("paid", paid)
             .put("only", onlyExtra).put("by", by).put("del", deleted)
+            .put("slot", slot).put("time", time)
     }
 
     companion object {
@@ -95,6 +100,7 @@ data class Order(
                 j.getString("id"), j.optString("date"), j.optString("customer"), j.optString("location"),
                 j.optInt("pax"), j.optString("remarks"), j.optLong("price", 20000), list,
                 j.optBoolean("paid"), j.optBoolean("only"), j.optInt("by", -1), j.optBoolean("del"),
+                j.optString("slot"), j.optString("time"),
             )
         }
     }
@@ -165,7 +171,7 @@ data class Audit(
     }
 }
 
-fun defaultUsers(): List<UserCfg> = List(4) { UserCfg("User ${it + 1}", Config.ROLES[it]) }
+fun defaultUsers(): List<UserCfg> = List(2) { UserCfg("User ${it + 1}", "User") }
 
 fun usersToJson(users: List<UserCfg>): JSONObject {
     val arr = JSONArray()
@@ -178,7 +184,7 @@ fun usersFromJson(j: JSONObject): List<UserCfg> {
     val out = ArrayList<UserCfg>()
     for (i in 0 until arr.length()) {
         val o = arr.getJSONObject(i)
-        out.add(UserCfg(o.optString("name"), o.optString("role", "Dapur")))
+        if (out.size < 2) out.add(UserCfg(o.optString("name"), "User"))
     }
     return if (out.isEmpty()) defaultUsers() else out
 }

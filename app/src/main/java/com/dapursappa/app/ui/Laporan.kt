@@ -1,5 +1,7 @@
 package com.dapursappa.app.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,7 +50,7 @@ fun LaporanTab(
         when (tab) {
             0 -> HarianReport(data, month, onMonth, onDay)
             1 -> MingguanReport(data, week, onWeek, onDay)
-            else -> BulananReport(data, month, onMonth)
+            else -> BulananReport(data, month, onMonth, onDay)
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -74,11 +76,12 @@ private fun DayRow(d: DayCalc, onClick: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Strong(Fmt.dayShort(d.date), size = 14)
-                Muted((d.menuName.ifBlank { "-" }) + " · ${d.pax} pax")
+                Muted((d.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" · ").ifBlank { "-" }) + " · ${d.pax} pax")
             }
             Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                 Text(Fmt.rp(d.profit), color = if (d.profit >= 0) c.ok else c.accentText, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                 Muted("Omzet ${Fmt.rp(d.revenue)} · Modal ${Fmt.rp(d.cost)}")
+                Muted("Margin ${Fmt.pct(d.profit, d.revenue)}")
             }
         }
     }
@@ -91,7 +94,7 @@ private fun HarianReport(data: AppData, month: LocalDate, onMonth: (LocalDate) -
     val active = m.days.filter { it.revenue > 0 || it.cost > 0 || it.expCost > 0 }.reversed()
     if (active.isEmpty()) Muted("Belum ada data di bulan ini.")
     for (d in active) DayRow(d) { onDay(d.date) }
-    Muted("Ketuk hari untuk melihat rincian bahan dan order.")
+    Muted("Ketuk hari untuk melihat rincian bahan dan order. Margin = profit ÷ omzet.")
 }
 
 @Composable
@@ -101,26 +104,33 @@ private fun MingguanReport(data: AppData, week: LocalDate, onWeek: (LocalDate) -
         "Week ${Fmt.weekNo(week)}", Fmt.range(week, week.plusDays(6)),
         { onWeek(week.minusWeeks(1)) }, { onWeek(week.plusWeeks(1)) },
     )
-    StatTile("Profit minggu ini", Fmt.rp(days.sumOf { it.profit }), Modifier.fillMaxWidth(), highlight = true)
+    val rev = days.sumOf { it.revenue }
+    val pr = days.sumOf { it.profit }
+    StatTile("Gross Profit minggu ini", Fmt.rp(pr), Modifier.fillMaxWidth(), highlight = true)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Omzet", Fmt.rp(days.sumOf { it.revenue }), Modifier.weight(1f))
-        StatTile("Modal belanja", Fmt.rp(days.sumOf { it.cost }), Modifier.weight(1f))
+        StatTile("Margin", Fmt.pct(pr, rev), Modifier.weight(1f))
+        StatTile("Omzet", Fmt.rp(rev), Modifier.weight(1f))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Modal belanja", Fmt.rp(days.sumOf { it.cost }), Modifier.weight(1f))
         StatTile("Total pax", days.sumOf { it.pax }.toString(), Modifier.weight(1f))
-        StatTile("Pengeluaran lain", Fmt.rp(days.sumOf { it.expCost }), Modifier.weight(1f))
     }
     for (d in days) DayRow(d) { onDay(d.date) }
-    Muted("Biaya bulanan tidak dihitung di laporan mingguan.")
+    Muted("Margin mingguan = gross profit ÷ omzet. Biaya bulanan tidak dihitung di laporan mingguan.")
 }
 
 @Composable
-private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) -> Unit) {
+private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) -> Unit, onDay: (LocalDate) -> Unit) {
     val c = Sappa.c
     val m = Calc.month(data, month)
     var showUnpaid by remember { mutableStateOf(false) }
+    val openWeeks = remember { mutableStateListOf<String>() }
     MonthNav(month, onMonth)
     StatTile("Profit bersih bulan ini", Fmt.rp(m.profit), Modifier.fillMaxWidth(), highlight = true)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Margin bersih", Fmt.pct(m.profit, m.revenue), Modifier.weight(1f))
+        StatTile("Margin sebelum biaya bulanan", Fmt.pct(m.profit + m.monthlyCost, m.revenue), Modifier.weight(1f))
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatTile("Omzet", Fmt.rp(m.revenue), Modifier.weight(1f))
         StatTile("Modal belanja", Fmt.rp(m.modal), Modifier.weight(1f))
@@ -130,21 +140,47 @@ private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) 
         StatTile("Biaya bulanan", Fmt.rp(m.monthlyCost), Modifier.weight(1f))
     }
 
-    SectionTitle("Omzet per minggu")
+    SectionTitle("Omzet dan margin per minggu")
     val groups = m.days.groupBy { Fmt.mondayOf(it.date) }
     SCard {
         var first = true
         for ((monday, list) in groups) {
             if (!first) Rule()
             first = false
-            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            val key = monday.toString()
+            val open = openWeeks.contains(key)
+            val rev = list.sumOf { it.revenue }
+            val pr = list.sumOf { it.profit }
+            Row(
+                Modifier.fillMaxWidth().clickable { if (open) openWeeks.remove(key) else openWeeks.add(key) }.padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 Column(Modifier.weight(1f)) {
-                    Strong("Week ${Fmt.weekNo(monday)}", size = 13)
-                    Muted("${list.first().date.dayOfMonth}–${list.last().date.dayOfMonth} ${Fmt.dayMon(list.first().date).substringAfter(' ')}")
+                    Strong((if (open) "▾ " else "▸ ") + "Week ${Fmt.weekNo(monday)}", size = 13)
+                    Muted("${list.first().date.dayOfMonth}–${list.last().date.dayOfMonth} ${Fmt.dayMon(list.first().date).substringAfter(' ')} · ketuk untuk data harian")
                 }
                 Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                    Strong(Fmt.rp(list.sumOf { it.revenue }), size = 13)
-                    Muted("Profit " + Fmt.rp(list.sumOf { it.profit }))
+                    Strong(Fmt.rp(rev), size = 13)
+                    Muted("Profit " + Fmt.rp(pr) + " · Margin " + Fmt.pct(pr, rev))
+                }
+            }
+            if (open) {
+                val act = list.filter { it.revenue > 0 || it.cost > 0 || it.expCost > 0 }
+                if (act.isEmpty()) Muted("Belum ada data harian di minggu ini.", modifier = Modifier.padding(start = 12.dp, bottom = 8.dp))
+                for (d in act) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 12.dp).clickable { onDay(d.date) }.padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Strong(Fmt.dayShort(d.date), size = 13)
+                            Muted((d.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" · ").ifBlank { "-" }) + " · ${d.pax} pax")
+                        }
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                            Strong(Fmt.rp(d.revenue), size = 13)
+                            Muted("Profit " + Fmt.rp(d.profit) + " · Margin " + Fmt.pct(d.profit, d.revenue))
+                        }
+                    }
                 }
             }
         }
@@ -153,7 +189,7 @@ private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) 
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         SectionTitle("Biaya bulanan"); Strong(Fmt.rp(m.monthlyCost))
     }
-    SCard {
+    SCard(tone = Tone.Shop) {
         if (m.monthlyLines.isEmpty()) Muted("Belum ada biaya bulanan.")
         for ((i, line) in m.monthlyLines.withIndex()) {
             if (i > 0) Rule()

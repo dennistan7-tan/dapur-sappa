@@ -189,11 +189,10 @@ fun Rule() {
 }
 
 @Composable
-fun ClickCard(onClick: () -> Unit, content: @Composable () -> Unit) {
-    val c = Sappa.c
+fun ClickCard(onClick: () -> Unit, tone: Tone = Tone.Neutral, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(c.surface).border(1.dp, c.border, shape).clickable(onClick = onClick)
+        Modifier.fillMaxWidth().clip(shape).background(toneBg(tone)).border(1.dp, toneLine(tone), shape).clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) { content() }
 }
@@ -219,5 +218,21 @@ fun DatePickDialog(initial: LocalDate, onPick: (LocalDate) -> Unit, onDismiss: (
 
 fun digits(s: String): String = s.filter { it.isDigit() }.take(12)
 
-fun canEdit(me: com.dapursappa.app.data.Me, dateIso: String): Boolean =
-    me.canAdmin || dateIso == LocalDate.now().toString()
+fun canEdit(me: com.dapursappa.app.data.Me, dateIso: String): Boolean = true
+
+/** Kotak menu (warna menu): MENU HARI INI, tanggal, lalu tiap baris menu. */
+@Composable
+fun MenuBox(data: com.dapursappa.app.data.AppData, date: LocalDate, label: String) {
+    val c = Sappa.c
+    val shape = RoundedCornerShape(16.dp)
+    val lines = com.dapursappa.app.data.Calc.menuRaw(data, date).lines().map { it.trim() }.filter { it.isNotEmpty() }
+    val libur = com.dapursappa.app.data.Calc.isLibur(data, date)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).background(c.menuBg).border(1.dp, c.menuLine, shape).padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Text(label, color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+        Text(com.dapursappa.app.data.Fmt.dayLong(date), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+        if (lines.isEmpty()) Text(if (libur) "Libur" else "Menu belum diisi", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+        for (ln in lines) Text(ln.uppercase(), color = c.text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 22.sp)
+    }
+}

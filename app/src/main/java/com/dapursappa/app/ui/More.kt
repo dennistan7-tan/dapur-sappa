@@ -1,5 +1,9 @@
 package com.dapursappa.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,12 +48,9 @@ import java.time.LocalDate
 fun MoreTab(
     me: Me,
     prefs: Prefs,
-    themeMode: Int,
-    onThemeMode: (Int) -> Unit,
     onSwitchUser: () -> Unit,
     onMenu: () -> Unit,
     onRiwayat: () -> Unit,
-    onExpense: () -> Unit,
     onKelola: () -> Unit,
 ) {
     val c = Sappa.c
@@ -63,6 +64,20 @@ fun MoreTab(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Menu mingguan dan harga: paling atas dan disorot
+        val hs = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        Row(
+            Modifier.fillMaxWidth()
+                .clip(hs).background(c.menuBg).border(2.dp, c.accent, hs)
+                .clickable(onClick = onMenu).padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Menu mingguan dan harga", color = c.accentText, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Atur menu tiap hari dan harga porsi per minggu", color = c.text2, fontSize = 12.sp)
+            }
+            Text("›", color = c.accentText, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+        }
         SCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -73,20 +88,7 @@ fun MoreTab(
             }
         }
         MoreItem("Riwayat perubahan", null, onRiwayat)
-        MoreItem("Menu mingguan dan harga", null, onMenu)
-        MoreItem("Pengeluaran lain", null, onExpense)
         if (me.isDev) MoreItem("Kelola user", "Developer", onKelola)
-
-        SectionTitle("Tampilan")
-        SCard {
-            Muted("Mode warna")
-            Spacer(Modifier.height(8.dp))
-            ChipScroll {
-                Chip("Ikuti HP", themeMode == 0) { onThemeMode(0) }
-                Chip("Terang", themeMode == 1) { onThemeMode(1) }
-                Chip("Gelap", themeMode == 2) { onThemeMode(2) }
-            }
-        }
 
         SectionTitle("Data")
         SCard {
@@ -266,8 +268,6 @@ fun RiwayatScreen(data: AppData, onBack: () -> Unit) {
 fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
     val c = Sappa.c
     val names = remember(data.users) { mutableStateListOf<String>().also { l -> data.users.forEach { l.add(it.name) } } }
-    val roles = remember(data.users) { mutableStateListOf<String>().also { l -> data.users.forEach { l.add(it.role) } } }
-    var devUser by remember { mutableStateOf(prefs.devUser) }
     var project by remember { mutableStateOf(prefs.fbProject) }
     var key by remember { mutableStateOf(prefs.fbKey) }
     var showPass by remember { mutableStateOf(false) }
@@ -280,17 +280,12 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Muted("Semua user punya akses penuh (belanja, order, menu, laporan).")
             for (i in names.indices) {
                 SCard {
                     Field("Nama User ${i + 1}", names[i], { names[i] = it.take(24) })
-                    Spacer(Modifier.height(8.dp))
-                    ChipScroll {
-                        Chip("Dapur", roles[i] == "Dapur") { roles[i] = "Dapur" }
-                        Chip("Admin", roles[i] == "Admin") { roles[i] = "Admin" }
-                    }
                 }
             }
-            OutlineButton("+  Tambah user") { names.add("User ${names.size + 1}"); roles.add("Dapur") }
 
             SectionTitle("Keamanan")
             SCard {
@@ -304,9 +299,7 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
             }
             SCard {
                 Strong("Akun developer")
-                Muted("Masuk dengan username dan password", modifier = Modifier.padding(bottom = 8.dp))
-                Field("Username developer", devUser, { devUser = it.trim() })
-                Spacer(Modifier.height(8.dp))
+                Muted("Masuk hanya dengan password", modifier = Modifier.padding(bottom = 8.dp))
                 OutlineButton("Ganti password developer") { showPass = true }
             }
 
@@ -322,9 +315,8 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
 
             if (msg.isNotEmpty()) Muted(msg, color = c.ok)
             PrimaryButton("Simpan perubahan") {
-                val list = names.indices.map { UserCfg(names[it].ifBlank { "User ${it + 1}" }, roles[it]) }
+                val list = names.indices.map { UserCfg(names[it].ifBlank { "User ${it + 1}" }, "User") }
                 if (list != data.users) Repo.saveUsers(list, me)
-                if (devUser.isNotBlank()) prefs.devUser = devUser
                 prefs.fbProject = project
                 prefs.fbKey = key
                 Sync.kick()

@@ -135,10 +135,7 @@ fun PickUserScreen(prefs: Prefs, users: List<UserCfg>, onPicked: (Int) -> Unit, 
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 Text(users[i].name, color = if (on) c.accentText else c.text, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                Text(
-                    if (users[i].role == "Admin") "Admin · order dan pembukuan" else "Dapur · belanja dan masak",
-                    color = c.text2, fontSize = 12.sp,
-                )
+                Text("Belanja, order, menu dan laporan", color = c.text2, fontSize = 12.sp)
             }
         }
 
@@ -152,7 +149,6 @@ fun PickUserScreen(prefs: Prefs, users: List<UserCfg>, onPicked: (Int) -> Unit, 
 @Composable
 fun DevLoginDialog(prefs: Prefs, onDismiss: () -> Unit, onOk: () -> Unit) {
     val c = Sappa.c
-    var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
     AlertDialog(
@@ -161,14 +157,13 @@ fun DevLoginDialog(prefs: Prefs, onDismiss: () -> Unit, onOk: () -> Unit) {
         title = { Text("Login developer", color = c.text, fontWeight = FontWeight.ExtraBold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Field("Username", user, { user = it; error = false })
                 Field("Password", pass, { pass = it; error = false }, password = true)
-                if (error) Text("Username atau password salah.", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (error) Text("Password salah.", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                if (user.trim() == prefs.devUser && Config.sha256(pass) == prefs.devHash) onOk() else error = true
+                if (Config.sha256(pass) == prefs.devHash) onOk() else error = true
             }) { Text("Masuk", color = c.accentText, fontWeight = FontWeight.ExtraBold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Batal", color = c.text2) } },

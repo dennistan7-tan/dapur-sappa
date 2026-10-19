@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dapursappa.app.data.AppData
 import com.dapursappa.app.data.Calc
+import com.dapursappa.app.data.Expense
 import com.dapursappa.app.data.Fmt
 import com.dapursappa.app.data.Kind
 import com.dapursappa.app.data.Me
@@ -55,6 +56,7 @@ fun BelanjaTab(me: Me, data: AppData) {
     var text by remember { mutableStateOf("") }
     var kindOverride by remember { mutableStateOf<Kind?>(null) }
     var useDate by remember { mutableStateOf(today) }
+    var chargeMonthly by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<Purchase?>(null) }
     var dialogNew by remember { mutableStateOf(false) }
@@ -62,19 +64,31 @@ fun BelanjaTab(me: Me, data: AppData) {
     val parsed = remember(text) { Parser.parse(text) }
     val kind = kindOverride ?: parsed?.kind ?: Kind.BAHAN
     val items = data.purchases.filter { it.date == viewDate.toString() }
+    val exps = data.expenses.filter { it.date == viewDate.toString() }
     val forToday = items.filter { it.kind != Kind.BULANAN && it.useDate == it.date }.sumOf { it.price }
     val forLater = items.filter { it.kind == Kind.BAHAN && it.useDate > it.date }.sumOf { it.price }
     val monthly = items.filter { it.kind == Kind.BULANAN }.sumOf { it.price }
+    val expSum = exps.sumOf { it.amount }
+
+    fun reset() { text = ""; kindOverride = null; useDate = today; chargeMonthly = false }
+    fun saveParsed(p: Parsed) {
+        if (kind == Kind.LAIN) {
+            Repo.saveExpense(Expense(Store.newId(), viewDate.toString(), p.name, p.price, chargeMonthly, me.idx), me)
+        } else {
+            Repo.savePurchase(draftFrom(p, text, kind, viewDate, if (kind == Kind.BAHAN) useDate else viewDate, me), null, me)
+        }
+        reset()
+    }
 
     Column(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Banner("Menu hari ini", menuBanner(data, today))
+        MenuBox(data, today, "MENU HARI INI")
 
-        SCard {
-            Strong("Catat belanja", size = 16)
-            Muted("Ketik bebas, urutan boleh terbalik. Contoh: ayam dada fillet 36rb 1kg", modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
+        SCard(tone = Tone.Shop) {
+            Strong("Catat belanja dan pengeluaran", size = 16)
+            Muted("Ketik bebas, urutan boleh terbalik. Contoh: ayam dada fillet 36rb 1kg · bensin motor antar 20rb", modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
             Field(
                 "Belanja", text, { text = it; kindOverride = null },
                 placeholder = "selada 3 ikat 9rb",
@@ -102,17 +116,24 @@ fun BelanjaTab(me: Me, data: AppData) {
                             ) { pickDate = true }
                         }
                     }
+                    if (kind == Kind.LAIN) {
+                        Spacer(Modifier.height(10.dp))
+                        Muted("Charge ke")
+                        Spacer(Modifier.height(4.dp))
+                        ChipScroll {
+                            Chip("Profit Harian", !chargeMonthly) { chargeMonthly = false }
+                            Chip("Profit Bulanan", chargeMonthly) { chargeMonthly = true }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Muted("Profit Harian: mengurangi profit hari itu. Profit Bulanan: hanya mengurangi profit bulanan.")
+                    }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlineButton("Ubah", Modifier.weight(1f)) {
                             dialogNew = true
                             dialog = draftFrom(parsed, text, kind, viewDate, if (kind == Kind.BAHAN) useDate else viewDate, me)
                         }
-                        PrimaryButton("Simpan", Modifier.weight(1f)) {
-                            val p = draftFrom(parsed, text, kind, viewDate, if (kind == Kind.BAHAN) useDate else viewDate, me)
-                            Repo.savePurchase(p, null, me)
-                            text = ""; kindOverride = null; useDate = today
-                        }
+                        PrimaryButton("Simpan", Modifier.weight(1f)) { saveParsed(parsed) }
                     }
                 } else {
                     Muted(
@@ -130,17 +151,15 @@ fun BelanjaTab(me: Me, data: AppData) {
 
         NavBar(
             if (viewDate == today) "Belanja hari ini" else "Belanja",
-            Fmt.dayLong(viewDate) + if (canEdit(me, viewDate.toString())) " · bisa diedit" else " · hanya lihat",
+            Fmt.dayLong(viewDate),
             { viewDate = viewDate.minusDays(1) }, { viewDate = viewDate.plusDays(1) },
         )
 
-        if (items.isEmpty()) {
-            Muted("Belum ada belanja di tanggal ini.", modifier = Modifier.padding(vertical = 8.dp))
+        if (items.isEmpty() && exps.isEmpty()) {
+            Muted("Belum ada belanja atau pengeluaran di tanggal ini.", modifier = Modifier.padding(vertical = 8.dp))
         }
         for (p in items) {
-            ClickCard(onClick = {
-                if (canEdit(me, p.date)) { dialogNew = false; dialog = p }
-            }) {
+            ClickCard(onClick = { dialogNew = false; dialog = p }, tone = Tone.Shop) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
                         Strong(p.name, size = 15)
@@ -153,15 +172,36 @@ fun BelanjaTab(me: Me, data: AppData) {
                 }
             }
         }
+        for (e in exps) {
+            SCard(tone = Tone.Spend) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Strong(e.name, size = 15)
+                        Muted("Pengeluaran lain · " + userName(data, e.by))
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Strong(Fmt.rp(e.amount), size = 15)
+                        if (e.monthly) Tag("Profit Bulanan", c.warnSoft, c.warn) else Tag("Profit Harian", c.okSoft, c.ok)
+                    }
+                }
+                TextButton(onClick = { Repo.deleteExpense(e, me) }) { Text("Hapus", color = c.accentText, fontSize = 12.sp) }
+            }
+        }
 
-        SCard(background = c.surface2) {
+        SCard(tone = Tone.Shop) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Muted("Untuk hari ini", size = 13); Strong(Fmt.rp(forToday))
+                Muted("Belanja untuk hari ini", size = 13); Strong(Fmt.rp(forToday))
             }
             if (forLater > 0) {
                 Spacer(Modifier.height(4.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Muted("Untuk hari lain", size = 13); Strong(Fmt.rp(forLater))
+                    Muted("Belanja untuk hari lain", size = 13); Strong(Fmt.rp(forLater))
+                }
+            }
+            if (expSum > 0) {
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Muted("Pengeluaran lain", size = 13); Strong(Fmt.rp(expSum))
                 }
             }
             if (monthly > 0) {
@@ -180,8 +220,12 @@ fun BelanjaTab(me: Me, data: AppData) {
             init = d, isNew = dialogNew,
             onSave = { np ->
                 Repo.savePurchase(np, if (dialogNew) null else d, me)
-                if (dialogNew) { text = ""; kindOverride = null; useDate = today }
+                if (dialogNew) reset()
                 dialog = null
+            },
+            onSaveExpense = { name, amount, monthlyCharge ->
+                Repo.saveExpense(Expense(Store.newId(), viewDate.toString(), name, amount, monthlyCharge, me.idx), me)
+                reset(); dialog = null
             },
             onDelete = if (dialogNew) null else ({ Repo.deletePurchase(d, me); dialog = null }),
             onDismiss = { dialog = null },
@@ -206,6 +250,7 @@ fun kindTag(k: Kind) {
         Kind.BAHAN -> Tag(k.label, c.okSoft, c.ok)
         Kind.KEMASAN -> Tag(k.label, c.accentSoft, c.accentText)
         Kind.BULANAN -> Tag(k.label, c.warnSoft, c.warn)
+        Kind.LAIN -> Tag(k.label, c.accentSoft, c.accentText)
     }
 }
 
@@ -221,10 +266,15 @@ private fun PreviewBlock(p: Parsed, kind: Kind) {
         Modifier.fillMaxWidth().padding(vertical = 2.dp),
     ) {
         Text("Terbaca otomatis", color = c.ok, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-        Strong(p.name + " · " + (Fmt.num(p.qty) + " " + p.unit).trim() + " · " + Fmt.rp(p.price), size = 15)
-        val per = if (p.qty > 0) Math.round(p.price / p.qty) else p.price
-        val perTxt = if (p.unit == "kg") "Rp" + Fmt.num(p.price / (p.qty * 1000)) + " per gram" else Fmt.rp(per) + " per " + p.unit.ifBlank { "satuan" }
-        Muted("Jenis: ${kind.label.lowercase()} · $perTxt")
+        if (kind == Kind.LAIN) {
+            Strong(p.name + " · " + Fmt.rp(p.price), size = 15)
+            Muted("Pengeluaran lain (bensin, tambal ban, dll)")
+        } else {
+            Strong(p.name + " · " + (Fmt.num(p.qty) + " " + p.unit).trim() + " · " + Fmt.rp(p.price), size = 15)
+            val per = if (p.qty > 0) Math.round(p.price / p.qty) else p.price
+            val perTxt = if (p.unit == "kg") "Rp" + Fmt.num(p.price / (p.qty * 1000)) + " per gram" else Fmt.rp(per) + " per " + p.unit.ifBlank { "satuan" }
+            Muted("Jenis: ${kind.label.lowercase()} · $perTxt")
+        }
     }
 }
 
@@ -233,6 +283,7 @@ fun PurchaseDialog(
     init: Purchase,
     isNew: Boolean,
     onSave: (Purchase) -> Unit,
+    onSaveExpense: (String, Long, Boolean) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -243,6 +294,7 @@ fun PurchaseDialog(
     var price by remember { mutableStateOf(init.price.toString()) }
     var kind by remember { mutableStateOf(init.kind) }
     var use by remember { mutableStateOf(LocalDate.parse(init.useDate)) }
+    var charge by remember { mutableStateOf(false) }
     var pick by remember { mutableStateOf(false) }
     val base = LocalDate.parse(init.date)
 
@@ -259,7 +311,14 @@ fun PurchaseDialog(
                 }
                 Field("Harga total (Rp)", price, { price = digits(it) }, keyboard = KeyboardType.Number)
                 Muted("Jenis")
-                ChipScroll { Kind.values().forEach { k -> Chip(k.label, kind == k) { kind = k } } }
+                ChipScroll { Kind.values().filter { isNew || it != Kind.LAIN }.forEach { k -> Chip(k.label, kind == k) { kind = k } } }
+                if (kind == Kind.LAIN) {
+                    Muted("Charge ke")
+                    ChipScroll {
+                        Chip("Profit Harian", !charge) { charge = false }
+                        Chip("Profit Bulanan", charge) { charge = true }
+                    }
+                }
                 if (kind == Kind.BAHAN) {
                     Muted("Dipakai untuk tanggal")
                     ChipScroll {
@@ -273,7 +332,9 @@ fun PurchaseDialog(
         confirmButton = {
             TextButton(onClick = {
                 val pr = price.toLongOrNull() ?: 0L
-                if (name.isNotBlank() && pr > 0) {
+                if (name.isNotBlank() && pr > 0 && kind == Kind.LAIN) {
+                    onSaveExpense(name.trim(), pr, charge)
+                } else if (name.isNotBlank() && pr > 0) {
                     val q = qty.replace(',', '.').toDoubleOrNull() ?: 1.0
                     onSave(init.copy(name = name.trim(), qty = q, unit = unit.trim(), price = pr, kind = kind, useDate = if (kind == Kind.BAHAN) use.toString() else init.date))
                 }
