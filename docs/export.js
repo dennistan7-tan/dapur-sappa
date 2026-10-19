@@ -154,19 +154,23 @@
     const draw = () => {
       const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1920;
       const g = cv.getContext('2d'); g.drawImage(tpl, 0, 0, 1080, 1920);
-      g.fillStyle = '#5A3A22'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#5A3A22'; g.strokeStyle = '#5A3A22'; g.lineJoin = 'round'; g.textAlign = 'center'; g.textBaseline = 'middle';
       const font = (px) => `${px}px LazyDog, "Arial Black", "Segoe UI Black", sans-serif`;
-      g.font = font(54); g.fillText(X.brosurDate(mon), 540, 480);
+      g.font = font(62); g.lineWidth = 3.2; g.strokeText(X.brosurDate(mon), 540, 480); g.fillText(X.brosurDate(mon), 540, 480);
       const xs = [195, 545, 903, 195, 545], ys = [792, 792, 792, 1130, 1130];
+      const all = [];
       for (let i = 0; i < 5; i++) {
-        const dt = C.addDays(mon, i); const dc = C.day(d, dt);
+        const dc = C.day(d, C.addDays(mon, i));
         let lines = C.menuLines(dc.menuName).map((s) => s.toUpperCase()).slice(0, 3);
         if (!lines.length && dc.libur) lines = ['LIBUR'];
-        if (!lines.length) continue;
-        let size = 36; g.font = font(size);
-        while (size > 18 && lines.some((l) => g.measureText(l).width > 345)) { size -= 1; g.font = font(size); }
-        lines.forEach((l, k) => g.fillText(l, xs[i], ys[i] + (k - (lines.length - 1) / 2) * 50));
+        all.push(lines);
       }
+      let size = 40; g.font = font(size);
+      while (size > 18 && all.some((ls) => ls.some((l) => g.measureText(l).width > 340))) { size -= 1; g.font = font(size); }
+      g.lineWidth = size * 0.07;
+      all.forEach((lines, i) => {
+        lines.forEach((l, k) => { const y = ys[i] + (k - (lines.length - 1) / 2) * 50; g.strokeText(l, xs[i], y); g.fillText(l, xs[i], y); });
+      });
       cb(cv);
     };
     const go = () => { const p = (document.fonts && document.fonts.load) ? document.fonts.load('36px LazyDog').catch(() => {}) : Promise.resolve(); p.then(draw); };

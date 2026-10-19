@@ -70,25 +70,28 @@ fun renderBrosur(ctx: Context, data: AppData, monday: LocalDate): Bitmap {
     val brown = 0xFF5A3A22.toInt()
     fun paint(size: Float) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = brown; typeface = tf; textSize = size * w; textAlign = Paint.Align.CENTER
+        style = Paint.Style.FILL_AND_STROKE; strokeWidth = (if (size > 50f) 3.2f else size * 0.07f) * w
     }
     // Tanggal
     run {
-        val p = paint(54f)
-        cv.drawText(brosurDate(monday), 540f * w, (480f + 18f) * w, p)
+        val p = paint(62f)
+        cv.drawText(brosurDate(monday), 540f * w, (480f + 19f) * w, p)
     }
     // Menu per hari (Senin-Jumat): pusat kolom dan pusat baris sesuai template
     val xs = listOf(195f, 545f, 903f, 195f, 545f)
     val ys = listOf(792f, 792f, 792f, 1130f, 1130f)
-    for (i in 0 until 5) {
-        val d = monday.plusDays(i.toLong())
-        val dc = Calc.day(data, d)
+    val all = (0 until 5).map { i ->
+        val dc = Calc.day(data, monday.plusDays(i.toLong()))
         var lines = dc.menuName.lines().map { it.trim().uppercase() }.filter { it.isNotEmpty() }.take(3)
         if (lines.isEmpty() && dc.libur) lines = listOf("LIBUR")
-        if (lines.isEmpty()) continue
-        var size = 36f
-        var p = paint(size)
-        while (size > 18f && lines.any { p.measureText(it) > 345f * w }) { size -= 1f; p = paint(size) }
-        val gap = 50f * w
+        lines
+    }
+    // Ukuran huruf sama untuk semua hari (seperti contoh Canva)
+    var size = 40f
+    var p = paint(size)
+    while (size > 18f && all.any { ls -> ls.any { p.measureText(it) > 340f * w } }) { size -= 1f; p = paint(size) }
+    val gap = 50f * w
+    for ((i, lines) in all.withIndex()) {
         val n = lines.size
         for ((k, ln) in lines.withIndex()) {
             val base = ys[i] * w + (k - (n - 1) / 2f) * gap + size * w * 0.35f
