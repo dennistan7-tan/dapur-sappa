@@ -46,6 +46,7 @@ sealed class Route {
     object MenuEdit : Route()
     object Riwayat : Route()
     object Kelola : Route()
+    object Brosur : Route()
 }
 
 @Composable
@@ -108,6 +109,7 @@ fun MainScreen(
                     Route.MenuEdit -> MenuScreen(me, data) { route = null }
                     Route.Riwayat -> RiwayatScreen(data) { route = null }
                     Route.Kelola -> KelolaUserScreen(me, data, prefs) { route = null }
+                    Route.Brosur -> BrosurScreen(data) { route = null }
                 }
             } else {
                 when (tab) {
@@ -115,7 +117,7 @@ fun MainScreen(
                     Tab.ORDER -> OrderTab(me, data, orderDate, { orderDate = it }, { id, d -> route = Route.OrderEdit(id, d) })
                     Tab.SUMMARY -> SummaryTab(
                         data, weekStart, { weekStart = it },
-                        { d -> route = Route.Detail(d) }, dark, { onThemeMode(if (dark) 1 else 2) },
+                        { d -> route = Route.Detail(d) },
                     )
                     Tab.LAPORAN -> LaporanTab(
                         data, repTab, { repTab = it }, repMonth, { repMonth = it.withDayOfMonth(1) },
@@ -124,6 +126,7 @@ fun MainScreen(
                     Tab.LAINNYA -> MoreTab(
                         me, prefs, onSwitchUser,
                         { route = Route.MenuEdit }, { route = Route.Riwayat }, { route = Route.Kelola },
+                        dark, { onThemeMode(if (it) 2 else 1) }, { route = Route.Brosur },
                     )
                 }
             }

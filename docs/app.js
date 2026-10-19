@@ -142,7 +142,7 @@
 
   // ---------- shell ----------
   function tabsFor(me) {
-    const all = [['menu', 'Menu dan harga'], ['belanja', 'Belanja'], ['order', 'Order'], ['summary', 'Summary'], ['laporan', 'Laporan'], ['riwayat', 'Riwayat']];
+    const all = [['menu', 'Menu dan harga'], ['belanja', 'Belanja'], ['order', 'Order'], ['summary', 'Summary'], ['laporan', 'Laporan'], ['brosur', 'Brosur menu'], ['riwayat', 'Riwayat']];
     if (me.isDev) all.push(['kelola', 'Kelola user']);
     return all;
   }
@@ -150,12 +150,11 @@
     const tabs = tabsFor(me);
     const apk = CFG.GITHUB_USER ? `<a class="lnk" target="_blank" rel="noopener" href="https://github.com/${CFG.GITHUB_USER}/${CFG.GITHUB_REPO}/releases/latest">Unduh APK</a>` : '';
     const online = Store.status === 'Online';
-    return `<header class="top"><div class="brand"><img src="${LOGO}" alt=""><b>Dapur Sappa</b></div>
+    return `<header class="top"><div class="brand"><img src="${LOGO}" alt=""><b data-a="syncnow" title="${esc(Store.status)}">Dapur Sapp<span class="la">a<i class="dot${online ? ' on' : ''}"></i></span></b></div>
       <div class="right"><span id="clock" class="clk"></span>
-      <span class="sync ${online ? 'on' : ''}" title="${esc(Store.status)}">${online ? 'Online' : 'Lokal'}</span>
       <span class="who">${esc(me.name)}</span>
       <button class="mini" data-a="switch">Ganti user</button></div></header>
-      <nav class="tabs">${tabs.map((t) => `<button class="tab${t[0] === 'menu' ? ' hl' : ''}${st.tab === t[0] && !st.route ? ' on' : ''}" data-a="tab" data-v="${t[0]}">${t[1]}</button>`).join('')}${apk}</nav>
+      <nav class="tabs">${tabs.map((t) => `<button class="tab${t[0] === 'menu' ? ' hl' : ''}${st.tab === t[0] && !st.route ? ' on' : ''}" data-a="tab" data-v="${t[0]}">${t[1]}</button>`).join('')}${apk}<button class="tsw${isDark() ? ' on' : ''}" data-a="theme" title="Geser atau klik: LIGHT / DARK" aria-label="Tema"><span>${isDark() ? 'DARK' : 'LIGHT'}</span><i></i></button></nav>
       <main>${body}</main><footer>Dapur Sappa web v${CFG.WEB_VERSION} · ${esc(Store.status)}${Store.lastSync ? ' · sinkron ' + C.timeOf(Store.lastSync) : ''}</footer>`;
   }
   function tickClock() {
@@ -220,7 +219,7 @@
   // ---------- Order ----------
   function vOrder(me) {
     const date = st.orderDate || (st.orderDate = today());
-    const orders = D().orders.filter((o) => o.date === date).slice().reverse();
+    const orders = D().orders.filter((o) => o.date === date).slice().sort((a, b) => { const x = C.orderKey(a) + a.customer.toLowerCase(), y = C.orderKey(b) + b.customer.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
     const pax = orders.reduce((s, o) => s + C.orderPortions(o), 0);
     const omzet = orders.reduce((s, o) => s + C.orderTotal(o), 0);
     const unpaid = orders.filter((o) => !o.paid && C.orderTotal(o) > 0);
@@ -232,7 +231,7 @@
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
     orders.forEach((o) => {
       const sub = (o.location ? o.location + ' · ' : '') + (o.only ? 'tanpa porsi' : o.pax + ' pax');
-      h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><b>${esc(o.customer)}</b><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="mu">${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="mu">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
+      h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><span>${o.time ? `<b class="acc tm">${esc(o.time)}</b> ` : ''}<b>${esc(o.customer)}</b></span><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="mu">${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="mu">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
         <div class="tags">${C.deliv(o) ? tag(C.deliv(o), 'ac') : ''}${o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''}${o.paid ? tag('Lunas', 'ok') : tag('Belum bayar', 'wr')}<span class="sp"></span><button class="link" data-a="togglepaid" data-v="${o.id}">${o.paid ? 'Tandai belum' : 'Tandai lunas'}</button></div></div>`;
     });
     if (unpaid.length) h += `<div class="card warnbg"><div class="row"><b>Belum dibayar</b><b>${C.rp(unpaid.reduce((s, o) => s + C.orderTotal(o), 0))}</b></div><div class="mu">${unpaid.length} order belum lunas</div></div>`;
@@ -244,7 +243,7 @@
       id: old ? old.id : null, date: old ? old.date : date, days: [date], customer: old ? old.customer : '', location: old ? old.location : '',
       pax: old ? old.pax : 1, price: String(old ? old.price : C.defaultPrice(D(), date)), remarks: old ? old.remarks : '',
       only: old ? !!old.only : false, paid: old ? !!old.paid : false, extras: old ? JSON.parse(JSON.stringify(old.extras || [])) : [],
-      slot: old ? (old.slot || '') : '', time: old ? (old.time || '') : '', err: '',
+      slot: old ? (old.slot || '') : '', hh: old && old.time ? old.time.split(':')[0] : '', mm: old && old.time ? (old.time.split(':')[1] || '') : '', err: '',
     };
     st.route = { name: 'order' };
   }
@@ -263,9 +262,8 @@
       h += `${chip('Sen–Jum', false, 'ofpreset', '5')}${chip('Sen–Sab', false, 'ofpreset', '6')}</div><p class="mu sm">${f.days.length} hari dipilih. Satu nama customer, order yang sama dibuat untuk tiap hari.</p>`;
     }
     h += field('Nama customer', 'of.customer', f.customer) + field('Lokasi', 'of.location', f.location, 'placeholder="mis. Blok C3 No.5"');
-    h += '<div class="mu">Waktu pengantaran</div><div class="slots">' + C.SLOTS.map((s) => chip(s[0], f.slot === s[0], 'ofslot', s[0])).join('');
-    if (f.slot) h += `<input type="time" class="in dt" data-bind="of.time" value="${esc(f.time)}" aria-label="Jam antar">`;
-    h += '</div>';
+    h += '<div class="mu">Waktu pengantaran (info untuk driver)</div><div class="slots">' + C.SLOTS.map((s) => chip(s[0], f.slot === s[0], 'ofslot', s[0])).join('') + '</div>';
+    h += `<div class="slots"><label class="fld"><span>Jam (0-23)</span><input class="in" style="width:90px" inputmode="numeric" maxlength="2" placeholder="16" data-bind="of.hh" data-num="1" value="${esc(f.hh)}"></label><b>:</b><label class="fld"><span>Menit (0-59)</span><input class="in" style="width:90px" inputmode="numeric" maxlength="2" placeholder="00" data-bind="of.mm" data-num="1" value="${esc(f.mm)}"></label></div>`;
     h += `<div class="mu">Jenis order</div><div class="chips">${chip('Porsi', !f.only, 'ofonly', '0')}${chip('Lauk saja', f.only, 'ofonly', '1')}</div>`;
     if (!f.only) {
       h += `<div class="mu">Jumlah pax</div><div class="step"><button class="arr" data-a="ofpax" data-v="-1">−</button><b>${f.pax}</b><button class="arr" data-a="ofpax" data-v="1">+</button></div>`;
@@ -294,8 +292,7 @@
     const ws = st.weekStart || (st.weekStart = C.mondayOf(today()));
     const days = C.week(D(), ws); const sum = (f) => days.reduce((s, d) => s + f(d), 0);
     const end = C.addDays(ws, 6);
-    let h = `<div class="toprow"><button class="mini thm" data-a="theme" title="Ganti tampilan terang/gelap">${isDark() ? '☾ DARK' : '☀ LIGHT'}</button></div>`;
-    h += nav('Summary Week ' + C.weekNo(ws), C.range(ws, end), 'wkprev', 'wknext');
+    let h = nav('Summary Week ' + C.weekNo(ws), C.range(ws, end), 'wkprev', 'wknext');
     h += `<div class="g2">${tile('Total pax', sum((d) => d.pax), false, 't-money')}${tile('Omzet', C.rp(sum((d) => d.revenue)), false, 't-money')}</div>`;
     h += tile('Gross Profit', C.rp(sum((d) => d.profit)), true, 't-money');
     h += '<h3>Menu minggu ini</h3><div class="g2">' + days.map(dayCard).join('') + '</div>';
@@ -325,7 +322,8 @@
   function vLaporan() {
     const rm = st.repMonth || (st.repMonth = C.firstOfMonth(today()));
     const rw = st.repWeek || (st.repWeek = C.mondayOf(today()));
-    let h = `<div class="chips">${chip('Harian', st.repTab === 0, 'reptab', 0)}${chip('Mingguan', st.repTab === 1, 'reptab', 1)}${chip('Bulanan', st.repTab === 2, 'reptab', 2)}</div>`;
+    let h = '<button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
+    h += `<div class="chips">${chip('Harian', st.repTab === 0, 'reptab', 0)}${chip('Mingguan', st.repTab === 1, 'reptab', 1)}${chip('Bulanan', st.repTab === 2, 'reptab', 2)}</div>`;
     const monthNav = () => {
       const t = today(); const cur = rm.substring(0, 7) === t.substring(0, 7);
       return nav(C.monthName(rm), '1 – ' + (cur ? C.dayNum(t) : C.monthLen(rm)) + ' ' + C.monthAbbr(rm) + (cur ? ' (berjalan)' : ''), 'mprev', 'mnext');
@@ -389,6 +387,22 @@
     if (!ed) h += '<p class="warn">Hanya admin yang bisa mengubah menu.</p>';
     if (f.msg) h += `<p class="okc">${esc(f.msg)}</p>`;
     if (ed) h += '<div class="btns"><button class="btn" data-a="mnsave">Simpan menu</button><button class="btn o" data-a="mncopy">Salin dari minggu lalu</button></div>';
+    return h;
+  }
+
+  // ---------- Brosur menu harian ----------
+  function vBrosur() {
+    const wk = st.brWeek || (st.brWeek = C.mondayOf(today()));
+    let h = '<h2>Export brosur menu harian</h2>' + nav('Week ' + C.weekNo(wk), Export.brosurDate(wk), 'brprev', 'brnext');
+    h += '<div id="brbox"><p class="mu">Menyiapkan brosur...</p></div>';
+    h += '<button class="btn" data-a="brdl">Unduh PNG (1080 × 1920)</button><p class="mu sm">Menu diambil dari Menu mingguan. Hari libur tampil LIBUR.</p><p class="mu sm" id="brfont"></p>';
+    setTimeout(() => {
+      Export.brosurCanvas(D(), wk, (cv) => {
+        const box = $('#brbox'); if (!box) return;
+        cv.id = 'brcv'; cv.className = 'brosur'; box.innerHTML = ''; box.appendChild(cv);
+        const f = $('#brfont'); if (f && !Export.fontOk()) f.textContent = 'Font LAZYDOG belum terpasang (taruh lazydog.ttf di folder web), memakai font cadangan.';
+      });
+    }, 0);
     return h;
   }
 
@@ -461,6 +475,7 @@
       case 'summary': return vSummary(me);
       case 'laporan': return vLaporan(me);
       case 'menu': return vMenu(me);
+      case 'brosur': return vBrosur(me);
       case 'riwayat': return vRiwayat(me);
       case 'kelola': return vKelola(me);
     }
@@ -500,6 +515,10 @@
       if (C.sha256(m.p || '') === devHash()) { LS.set('ds_dev', '1'); closeModal(); st.tab = null; render(); } else devModal(true);
     },
     switch() { LS.set('ds_user', '-1'); LS.set('ds_dev', ''); st.tab = null; st.route = null; render(); },
+    syncnow() { Store.kick(); },
+    exportxls() { try { Export.downloadReport(D()); } catch (e) { alert('Gagal export: ' + e.message); } },
+    brprev() { st.brWeek = C.addDays(st.brWeek, -7); render(); }, brnext() { st.brWeek = C.addDays(st.brWeek, 7); render(); },
+    brdl() { const cv = $('#brcv'); if (cv) Export.downloadBrosur(cv, st.brWeek); },
     theme() { LS.set('ds_theme', isDark() ? 'light' : 'dark'); applyTheme(); keepRender(); },
     tab(v) { st.tab = v; st.route = null; if (v === 'menu') menuInit(C.mondayOf(today())); if (v === 'kelola') st.f.ku = null; render(); },
     back() { st.route = null; keepRender(); },
@@ -553,7 +572,7 @@
     ofdate(v) { const f = st.f.of; if (!v) return; f.date = v; f.days = [v]; keepRender(); },
     ofday(v) { const f = st.f.of; const i = f.days.indexOf(v); if (i >= 0) f.days.splice(i, 1); else f.days.push(v); f.days.sort(); if (f.days.length) f.date = f.days[0]; keepRender(); },
     ofpreset(v) { const f = st.f.of; const mon = C.mondayOf(f.date); f.days = []; for (let i = 0; i < +v; i++) f.days.push(C.addDays(mon, i)); f.date = f.days[0]; keepRender(); },
-    ofslot(v) { const f = st.f.of; const prev = f.slot; if (f.slot === v) { f.slot = ''; f.time = ''; } else { f.slot = v; if (!f.time || f.time === C.slotTime(prev)) f.time = C.slotTime(v); } keepRender(); },
+    ofslot(v) { const f = st.f.of; if (f.slot === v) { f.slot = ''; f.hh = ''; f.mm = ''; } else { f.slot = v; const t = C.slotTime(v).split(':'); f.hh = t[0]; f.mm = t[1]; } keepRender(); },
     wkopen(v) { st.f.wk = st.f.wk || {}; st.f.wk[v] = !st.f.wk[v]; keepRender(); },
     ofpax(v) { st.f.of.pax = Math.max(1, st.f.of.pax + +v); keepRender(); },
     ofdelx(v) { st.f.of.extras.splice(+v, 1); keepRender(); },
@@ -567,13 +586,18 @@
     },
     ofsave() {
       const f = st.f.of, me = getMe(); const price = +f.price || 0;
-      if (!f.customer.trim()) f.err = 'Nama customer harus diisi.';
+      const hv = f.hh === '' ? null : +f.hh, mv = f.mm === '' ? 0 : +f.mm; const hasT = f.hh !== '' || f.mm !== '';
+      const badT = hasT && (hv === null || isNaN(hv) || isNaN(mv) || hv < 0 || hv > 23 || mv < 0 || mv > 59);
+      const tstr = hasT && !badT ? String(hv).padStart(2, '0') + ':' + String(mv).padStart(2, '0') : '';
+      if (tstr && !f.slot) f.slot = hv < 11 ? 'PAGI' : hv < 15 ? 'SIANG' : hv < 18 ? 'SORE' : 'MALAM';
+      if (badT) f.err = 'Jam atau menit tidak valid. Contoh: jam 16, menit 00';
+      else if (!f.customer.trim()) f.err = 'Nama customer harus diisi.';
       else if (!f.only && price <= 0) f.err = 'Harga per porsi harus diisi.';
       else if (f.only && !f.extras.length) f.err = 'Lauk saja butuh minimal 1 pesanan tambahan.';
       else if (!f.id && !f.days.length) f.err = 'Pilih minimal 1 hari kirim.';
       else {
         const old = f.id ? D().orders.find((o) => o.id === f.id) : null;
-        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: f.slot ? (f.time || '') : '', by: old ? old.by : me.idx, del: false });
+        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: tstr, by: old ? old.by : me.idx, del: false });
         if (f.id) { saveOrder(mk(f.id, f.date), old, me); st.orderDate = f.date; }
         else { const list = f.days.slice().sort().map((d) => mk(C.uuid(), d)); saveOrders(list, me); st.orderDate = list[0].date; }
         st.route = null; render(); return;
@@ -626,6 +650,7 @@
   }
 
   document.addEventListener('click', (e) => {
+    if (window.__swiped) { window.__swiped = false; return; }
     const el = e.target.closest('[data-a]'); if (!el) return;
     const a = el.getAttribute('data-a'); if (!a || !A[a]) return;
     if (el.tagName === 'A') e.preventDefault();
@@ -650,9 +675,17 @@
 
   // ---------- mulai ----------
   Store.load();
-  Store.onChange = (changed) => { if (changed) softRender(); else { const f = $('footer'); if (f) f.textContent = 'Dapur Sappa web v' + CFG.WEB_VERSION + ' · ' + Store.status + (Store.lastSync ? ' · sinkron ' + C.timeOf(Store.lastSync) : ''); } };
+  Store.onChange = (changed) => { if (changed) softRender(); else { const dt = $('.brand .dot'); if (dt) dt.classList.toggle('on', Store.status === 'Online'); const f = $('footer'); if (f) f.textContent = 'Dapur Sappa web v' + CFG.WEB_VERSION + ' · ' + Store.status + (Store.lastSync ? ' · sinkron ' + C.timeOf(Store.lastSync) : ''); } };
   applyTheme();
   render();
+  (() => { // geser tombol tema (swipe) atau klik
+    let sx = null;
+    document.addEventListener('pointerdown', (e) => { sx = e.target.closest && e.target.closest('.tsw') ? e.clientX : null; });
+    document.addEventListener('pointerup', (e) => {
+      if (sx === null) return; const dx = e.clientX - sx; sx = null;
+      if (Math.abs(dx) > 14) { e.preventDefault(); window.__swiped = true; const want = dx > 0 ? 'dark' : 'light'; if ((want === 'dark') !== isDark()) A.theme(); setTimeout(() => { window.__swiped = false; }, 50); }
+    });
+  })();
   setInterval(tickClock, 30000);
   Store.start();
   window.__ds = { st, A, Store, render }; // untuk pengujian

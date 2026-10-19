@@ -69,6 +69,15 @@ data class Order(
     val time: String = "",
 ) {
     val delivery: String get() = if (slot.isNotBlank()) slot + (if (time.isNotBlank()) " · $time" else "") else time
+    /** Kunci urut pengantaran: jam yang diisi, atau jam bawaan slot; tanpa jam di paling bawah. */
+    val sortKey: String get() = when {
+        time.isNotBlank() -> time
+        slot == "PAGI" -> "07:00"
+        slot == "SIANG" -> "12:00"
+        slot == "SORE" -> "16:00"
+        slot == "MALAM" -> "19:00"
+        else -> "99:99"
+    }
     val portions: Int get() = if (onlyExtra) 0 else pax
     val extrasTotal: Long get() = extras.sumOf { it.total }
     val total: Long get() = portions * portionPrice + extrasTotal

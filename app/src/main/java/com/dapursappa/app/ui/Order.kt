@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -45,7 +46,7 @@ fun OrderTab(
 ) {
     val c = Sappa.c
     val ds = date.toString()
-    val orders = data.orders.filter { it.date == ds }.reversed()
+    val orders = data.orders.filter { it.date == ds }.sortedWith(compareBy({ it.sortKey }, { it.customer.lowercase() }))
     val pax = orders.sumOf { it.portions }
     val omzet = orders.sumOf { it.total }
     val unpaid = orders.filter { !it.paid && it.total > 0 }
@@ -69,7 +70,13 @@ fun OrderTab(
         for (o in orders) {
             ClickCard(onClick = { onOpen(o.id, date) }, tone = Tone.Order) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Strong(o.customer, size = 15)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (o.time.isNotBlank()) {
+                            Text(o.time, color = c.accentText, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Strong(o.customer, size = 15)
+                    }
                     Strong(Fmt.rp(o.total), size = 15)
                 }
                 val sub = (if (o.location.isBlank()) "" else o.location + " · ") + (if (o.onlyExtra) "tanpa porsi" else "${o.pax} pax")
@@ -107,21 +114,6 @@ fun OrderTab(
 
 private val SLOTS = listOf("PAGI" to "07:00", "SIANG" to "12:00", "SORE" to "16:00", "MALAM" to "19:00")
 
-/** Rapikan jam: "1600", "16.00", "16:0" -> "16:00". Kosong = tanpa jam. Null = tidak valid. */
-private fun normTime(s: String): String? {
-    val t = s.trim()
-    if (t.isEmpty()) return ""
-    val parts = t.split(':', '.')
-    val (h, m) = if (parts.size >= 2) parts[0] to parts[1] else {
-        val d = t.filter { it.isDigit() }
-        if (d.length <= 2) d to "0" else d.dropLast(2) to d.takeLast(2)
-    }
-    val hh = h.toIntOrNull() ?: return null
-    val mm = m.toIntOrNull() ?: return null
-    if (hh !in 0..23 || mm !in 0..59) return null
-    return "%02d:%02d".format(hh, mm)
-}
-
 @Composable
 fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose: () -> Unit) {
     val c = Sappa.c
@@ -137,7 +129,8 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     var onlyExtra by remember { mutableStateOf(old?.onlyExtra ?: false) }
     var paid by remember { mutableStateOf(old?.paid ?: false) }
     var slot by remember { mutableStateOf(old?.slot ?: "") }
-    var time by remember { mutableStateOf(old?.time ?: "") }
+    var hh by remember { mutableStateOf(old?.time?.substringBefore(':', "") ?: "") }
+    var mm by remember { mutableStateOf(old?.time?.substringAfter(':', "") ?: "") }
     var showExtra by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var confirmDel by remember { mutableStateOf(false) }
@@ -178,22 +171,23 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
             Field("Nama customer", customer, { customer = it; error = "" })
             Field("Lokasi", location, { location = it }, placeholder = "mis. Blok C3 No.5")
 
-            Muted("Waktu pengantaran")
+            Muted("Waktu pengantaran (info untuk driver)")
             ChipScroll {
                 SLOTS.forEach { (name, def) ->
                     Chip(name, slot == name) {
-                        if (slot == name) { slot = ""; time = "" }
+                        if (slot == name) { slot = ""; hh = ""; mm = "" }
                         else {
-                            val prevDef = SLOTS.firstOrNull { it.first == slot }?.second
-                            if (time.isBlank() || time == prevDef) time = def
                             slot = name
+                            hh = def.substringBefore(':'); mm = def.substringAfter(':')
                         }
                         error = ""
                     }
                 }
             }
-            if (slot.isNotEmpty()) {
-                Field("Jam antar ($slot)", time, { time = it.filter { ch -> ch.isDigit() || ch == ':' || ch == '.' }.take(5); error = "" }, keyboard = KeyboardType.Number, placeholder = "mis. 16:00")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+                Field("Jam (0-23)", hh, { hh = it.filter { ch -> ch.isDigit() }.take(2); error = "" }, Modifier.weight(1f), keyboard = KeyboardType.Number, placeholder = "16")
+                Text(":", color = c.text, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 14.dp))
+                Field("Menit (0-59)", mm, { mm = it.filter { ch -> ch.isDigit() }.take(2); error = "" }, Modifier.weight(1f), keyboard = KeyboardType.Number, placeholder = "00")
             }
 
             Muted("Jenis order")
@@ -258,7 +252,9 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
             if (error.isNotEmpty()) Muted(error, color = c.accentText)
 
             PrimaryButton(if (nd > 1) "Simpan $nd order" else "Simpan order") {
-                val tn = if (slot.isEmpty()) "" else normTime(time)
+                val hv = hh.toIntOrNull(); val mv = if (mm.isBlank()) 0 else mm.toIntOrNull()
+                val tn: String? = if (hh.isBlank() && mm.isBlank()) "" else if (hv == null || mv == null || hv !in 0..23 || mv !in 0..59) null else "%02d:%02d".format(hv, mv)
+                if (tn != null && tn.isNotEmpty() && slot.isEmpty()) slot = when { hv!! < 11 -> "PAGI"; hv < 15 -> "SIANG"; hv < 18 -> "SORE"; else -> "MALAM" }
                 if (customer.isBlank()) {
                     error = "Nama customer harus diisi."
                 } else if (!onlyExtra && priceL <= 0) {
@@ -268,7 +264,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                 } else if (old == null && days.isEmpty()) {
                     error = "Pilih minimal 1 hari kirim."
                 } else if (tn == null) {
-                    error = "Jam antar tidak valid. Contoh: 16:00"
+                    error = "Jam atau menit tidak valid. Contoh: jam 16, menit 00"
                 } else {
                     fun mk(id: String, d: LocalDate) = Order(
                         id = id, date = d.toString(), customer = customer.trim(),

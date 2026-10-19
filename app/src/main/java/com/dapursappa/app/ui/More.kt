@@ -7,6 +7,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,10 +56,11 @@ fun MoreTab(
     onMenu: () -> Unit,
     onRiwayat: () -> Unit,
     onKelola: () -> Unit,
+    dark: Boolean,
+    onDark: (Boolean) -> Unit,
+    onBrosur: () -> Unit,
 ) {
     val c = Sappa.c
-    val status by Sync.status.collectAsState()
-    val last by Sync.lastSync.collectAsState()
     val ctx = LocalContext.current
     var updMsg by remember { mutableStateOf("") }
     var updInfo by remember { mutableStateOf<Updater.Info?>(null) }
@@ -87,22 +92,19 @@ fun MoreTab(
                 TextButton(onClick = onSwitchUser) { Text("Ganti user", color = c.accentText, fontWeight = FontWeight.ExtraBold) }
             }
         }
-        MoreItem("Riwayat perubahan", null, onRiwayat)
-        if (me.isDev) MoreItem("Kelola user", "Developer", onKelola)
-
-        SectionTitle("Data")
+        MoreItem("Export brosur menu harian", "PNG", onBrosur)
         SCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Strong("Sinkron")
-                    Muted(if (last > 0) "Terakhir sinkron ${Fmt.time(last)} WIB" else "Belum pernah sinkron")
+                    Strong("Tampilan", size = 15)
+                    Muted(if (dark) "Mode gelap" else "Mode terang")
                 }
-                if (status.startsWith("Online")) Tag(status, c.okSoft, c.ok) else Tag("Lokal", c.warnSoft, c.warn)
+                ThemeSwitch(dark, onDark)
             }
-            if (!status.startsWith("Online")) Muted(status, modifier = Modifier.padding(top = 6.dp))
-            Spacer(Modifier.height(8.dp))
-            OutlineButton("Sinkron sekarang") { Sync.kick() }
         }
+        MoreItem("Riwayat perubahan", null, onRiwayat)
+        if (me.isDev) MoreItem("Kelola user", "Developer", onKelola)
+
         SectionTitle("Aplikasi")
         SCard {
             Strong("Dapur Sappa · versi ${Config.APP_VERSION}")
@@ -353,6 +355,41 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
                 }) { Text("Simpan", color = c.accentText, fontWeight = FontWeight.ExtraBold) }
             },
             dismissButton = { TextButton(onClick = { showPass = false }) { Text("Batal", color = c.text2) } },
+        )
+    }
+}
+
+/** Toggle LIGHT / DARK: bisa digeser (swipe) atau diketuk. */
+@Composable
+fun ThemeSwitch(dark: Boolean, onChange: (Boolean) -> Unit) {
+    val c = Sappa.c
+    val w = 92.dp
+    val h = 38.dp
+    val thumb = 32.dp
+    val pad = 3.dp
+    val x by androidx.compose.animation.core.animateDpAsState(if (dark) w - thumb - pad else pad, label = "thumb")
+    var drag by remember { mutableStateOf(0f) }
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
+    Box(
+        Modifier.width(w).height(h).clip(shape)
+            .background(if (dark) c.accentSoft else c.surface2)
+            .border(1.5.dp, c.border, shape)
+            .clickable { onChange(!dark) }
+            .pointerInput(dark) {
+                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                    onDragStart = { drag = 0f },
+                    onDragEnd = { if (drag > 8f && !dark) onChange(true) else if (drag < -8f && dark) onChange(false) },
+                ) { _, amount -> drag += amount }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            if (dark) "DARK" else "LIGHT",
+            modifier = Modifier.align(if (dark) Alignment.CenterStart else Alignment.CenterEnd).padding(horizontal = 12.dp),
+            color = c.text2, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp,
+        )
+        Box(
+            Modifier.offset(x = x).size(thumb).clip(androidx.compose.foundation.shape.CircleShape).background(c.accent),
         )
     }
 }

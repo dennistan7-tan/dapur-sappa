@@ -43,8 +43,6 @@ fun SummaryTab(
     weekStart: LocalDate,
     onWeek: (LocalDate) -> Unit,
     onDay: (LocalDate) -> Unit,
-    dark: Boolean,
-    onToggleTheme: () -> Unit,
 ) {
     val c = Sappa.c
     val days = Calc.week(data, weekStart)
@@ -57,19 +55,6 @@ fun SummaryTab(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            val shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp)
-            Text(
-                if (dark) "DARK" else "LIGHT",
-                modifier = Modifier
-                    .clip(shape)
-                    .background(c.surface)
-                    .border(1.5.dp, c.border, shape)
-                    .clickable(onClick = onToggleTheme)
-                    .padding(horizontal = 16.dp, vertical = 7.dp),
-                color = c.text, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp,
-            )
-        }
         NavBar(
             "Summary Week ${Fmt.weekNo(weekStart)}", Fmt.range(weekStart, end),
             { onWeek(weekStart.minusWeeks(1)) }, { onWeek(weekStart.plusWeeks(1)) },

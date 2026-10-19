@@ -62,7 +62,7 @@ object Calc {
 
     fun day(d: AppData, date: LocalDate): DayCalc {
         val ds = date.toString()
-        val orders = d.orders.filter { it.date == ds }.sortedBy { it.customer.lowercase() }
+        val orders = d.orders.filter { it.date == ds }.sortedWith(compareBy({ it.sortKey }, { it.customer.lowercase() }))
         val pax = orders.sumOf { it.portions }
         val revenue = orders.sumOf { it.total }
         val bahan = d.purchases.filter { it.kind == Kind.BAHAN && it.useDate == ds }

@@ -73,3 +73,13 @@ table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--mu);fon
 .sub .row{padding:5px 0}
 .btn.first{margin-top:0}
 .mbox .mn{text-transform:uppercase}
+
+@font-face{font-family:LazyDog;src:url(lazydog.ttf) format("truetype"),url(lazydog.otf) format("opentype");font-display:swap}
+.brand .la{position:relative;display:inline-block}.brand .dot{position:absolute;left:-5px;top:2px;width:7px;height:7px;border-radius:50%;background:#9E9E9E}.brand .dot.on{background:#2ECC71}
+.brand b{cursor:pointer}
+.tsw{margin-left:auto;align-self:center;position:relative;width:92px;height:36px;border-radius:99px;border:1.5px solid var(--ln);background:var(--soft);cursor:pointer;flex:none;padding:0;touch-action:pan-y}
+.tsw span{position:absolute;top:50%;transform:translateY(-50%);right:12px;font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--mu)}
+.tsw i{position:absolute;top:2px;left:3px;width:30px;height:30px;border-radius:50%;background:var(--ac);transition:left .18s}
+.tsw.on span{right:auto;left:12px}.tsw.on i{left:57px}
+.lnk+.tsw{margin-left:12px}
+.brosur{max-width:420px;width:100%;border-radius:12px;border:1px solid var(--ln);display:block;margin:8px auto}

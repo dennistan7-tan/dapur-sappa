@@ -175,6 +175,7 @@
   C.slotTime = (s) => { const x = C.SLOTS.find((q) => q[0] === s); return x ? x[1] : ''; };
   C.deliv = (o) => (o.slot ? o.slot + (o.time ? ' · ' + o.time : '') : (o.time || ''));
   C.pct = (profit, rev) => (rev > 0 ? (Math.round(profit / rev * 1000) / 10).toString().replace('.', ',') + '%' : '-');
+  C.orderKey = (o) => o.time || C.slotTime(o.slot) || '99:99';
   C.orderPortions = (o) => (o.only ? 0 : (o.pax || 0));
   C.extrasTotal = (o) => (o.extras || []).reduce((s, e) => s + (e.q || 0) * (e.p || 0), 0);
   C.orderTotal = (o) => C.orderPortions(o) * (o.price || 0) + C.extrasTotal(o);
@@ -215,7 +216,7 @@
   };
 
   C.day = function (d, date) {
-    const orders = d.orders.filter((o) => o.date === date).sort((a, b) => a.customer.toLowerCase() < b.customer.toLowerCase() ? -1 : 1);
+    const orders = d.orders.filter((o) => o.date === date).sort((a, b) => { const x = C.orderKey(a) + a.customer.toLowerCase(), y = C.orderKey(b) + b.customer.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
     const pax = orders.reduce((s, o) => s + C.orderPortions(o), 0);
     const revenue = orders.reduce((s, o) => s + C.orderTotal(o), 0);
     const bahan = d.purchases.filter((p) => p.kind === 'BAHAN' && (p.useDate || p.date) === date);

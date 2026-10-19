@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import com.dapursappa.app.data.Sync
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,7 +70,19 @@ fun AppHeader() {
             modifier = Modifier.size(44.dp),
         )
         Spacer(Modifier.width(10.dp))
-        Text("Dapur Sappa", color = c.headerText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+        val st by Sync.status.collectAsState()
+        val online = st.startsWith("Online")
+        Row(Modifier.clickable { Sync.kick() }, verticalAlignment = Alignment.Bottom) {
+            Text("Dapur Sapp", color = c.headerText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Box {
+                Text("a", color = c.headerText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Box(
+                    Modifier.align(Alignment.TopStart).offset(x = (-5).dp, y = 1.dp).size(7.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(if (online) Color(0xFF2ECC71) else Color(0xFF9E9E9E)),
+                )
+            }
+        }
         Spacer(Modifier.weight(1f))
         Column(horizontalAlignment = Alignment.End) {
             Text(now.format(DATE_FMT), color = c.headerText, fontSize = 11.sp)
