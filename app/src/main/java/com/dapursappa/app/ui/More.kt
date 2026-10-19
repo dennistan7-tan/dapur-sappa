@@ -7,6 +7,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -376,7 +377,7 @@ fun ThemeSwitch(dark: Boolean, onChange: (Boolean) -> Unit) {
             .border(1.5.dp, c.border, shape)
             .clickable { onChange(!dark) }
             .pointerInput(dark) {
-                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart = { drag = 0f },
                     onDragEnd = { if (drag > 8f && !dark) onChange(true) else if (drag < -8f && dark) onChange(false) },
                 ) { _, amount -> drag += amount }

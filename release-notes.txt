@@ -1,4 +1,4 @@
-Dapur Sappa v0.4.2
+Dapur Sappa v0.4.3
 - Order: isi jam dan menit pengantaran untuk info driver; daftar order diurutkan dari pagi ke malam
 - Mode terang/gelap dipindah ke menu Lainnya sebagai toggle (bisa digeser)
 - Titik sinkron (abu = offline, hijau = online) ada di header, di atas huruf a terakhir tulisan Sappa
