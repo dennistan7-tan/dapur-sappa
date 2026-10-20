@@ -109,7 +109,7 @@
   const chip = (label, on, a, v) => `<button type="button" class="chip${on ? ' on' : ''}" data-a="${a}" data-v="${esc(v === undefined ? '' : v)}">${esc(label)}</button>`;
   const tag = (t, kind) => `<span class="tag ${kind || ''}">${esc(t)}</span>`;
   const kindTag = (k) => tag(kindLabel(k), k === 'BAHAN' ? 'ok' : k === 'KEMASAN' ? 'ac' : 'wr');
-  const nav = (title, sub, prev, next) => `<div class="wk"><button class="arr" data-a="${prev}">‹</button><div class="ttl"><h2>${esc(title)}</h2><p>${esc(sub)}</p></div><button class="arr" data-a="${next}">›</button></div>`;
+  const nav = (title, sub, prev, next) => `<div class="wk"><button class="arr" data-a="${prev}">‹</button><div class="ttl"><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div><button class="arr" data-a="${next}">›</button></div>`;
   const field = (label, bind, val, extra) => `<label class="fld"><span>${esc(label)}</span><input class="in" data-bind="${bind}" value="${esc(val)}" ${extra || ''}></label>`;
   const menuBanner = (date) => {
     const mn = C.menuName(D(), date), lib = C.isLibur(D(), date);
@@ -118,7 +118,7 @@
 
   const menuBox = (date, label) => {
     const lines = C.menuLines(C.menuRaw(D(), date)); const lib = C.isLibur(D(), date);
-    return `<div class="mbox t-menu"><small class="mlab">${esc(label)}</small><div class="mdate">${esc(C.dayLong(date))}</div>${lines.length ? lines.map((x) => `<div class="mn">${esc(x)}</div>`).join('') : `<div class="mn none">${lib ? 'Libur' : 'Menu belum diisi'}</div>`}</div>`;
+    return `<div class="mbox t-menu"><div class="mhead"><small class="mlab">${esc(label)}</small><span class="mdate">${esc(C.dayLong(date))}</span></div>${lines.length ? lines.map((x) => `<div class="mn">${esc(x)}</div>`).join('') : `<div class="mn none">${lib ? 'Libur' : 'Menu belum diisi'}</div>`}</div>`;
   };
 
   // ---------- auth ----------
@@ -225,7 +225,7 @@
     const unpaid = orders.filter((o) => !o.paid && C.orderTotal(o) > 0);
     let h = '<button class="btn first" data-a="neworder">+ Tambah order</button>';
     h += menuBox(date, date === today() ? 'MENU HARI INI' : 'MENU');
-    h += nav('Order', C.dayLong(date), 'ordprev', 'ordnext');
+    h += nav('Order', '', 'ordprev', 'ordnext');
     h += `<div class="g3">${tile('Order', orders.length, false, 't-order')}${tile('Porsi', pax, false, 't-order')}${tile('Omzet', C.rp(omzet), true, 't-money')}</div>`;
     h += '<h3>Daftar order</h3>';
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
@@ -520,7 +520,7 @@
     brprev() { st.brWeek = C.addDays(st.brWeek, -7); render(); }, brnext() { st.brWeek = C.addDays(st.brWeek, 7); render(); },
     brdl() { const cv = $('#brcv'); if (cv) Export.downloadBrosur(cv, st.brWeek); },
     theme() { LS.set('ds_theme', isDark() ? 'light' : 'dark'); applyTheme(); keepRender(); },
-    tab(v) { st.tab = v; st.route = null; if (v === 'menu') menuInit(C.mondayOf(today())); if (v === 'kelola') st.f.ku = null; render(); },
+    tab(v) { st.tab = v; st.route = null; if (v === 'menu') menuInit(C.mondayOf(today())); if (v === 'kelola') st.f.ku = null; render(); if (v === 'belanja') { const i = $('#bel-text'); if (i) i.focus(); } },
     back() { st.route = null; keepRender(); },
     detail(v) { st.route = { name: 'detail', date: v }; render(); },
     // belanja

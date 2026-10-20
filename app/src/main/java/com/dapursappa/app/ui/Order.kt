@@ -57,7 +57,7 @@ fun OrderTab(
     ) {
         PrimaryButton("+  Tambah order") { onOpen(null, date) }
         MenuBox(data, date, if (date == LocalDate.now()) "MENU HARI INI" else "MENU")
-        NavBar("Order", Fmt.dayLong(date), { onDate(date.minusDays(1)) }, { onDate(date.plusDays(1)) })
+        NavBar("Order", "", { onDate(date.minusDays(1)) }, { onDate(date.plusDays(1)) })
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Order", orders.size.toString(), Modifier.weight(1f), tone = Tone.Order)
@@ -86,14 +86,20 @@ fun OrderTab(
                     Muted("Tambahan: ${e.name} ${e.qty} × ${Fmt.rp(e.unitPrice)}", modifier = Modifier.padding(top = 2.dp))
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
-                    if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
-                    else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
-                    if (o.paid) Tag("Lunas", c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
-                    Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                    androidx.compose.foundation.layout.FlowRow(
+                        Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
+                        if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
+                        else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
+                        if (o.paid) Tag("Lunas", c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
+                    }
                     TextButton(onClick = { Repo.saveOrder(o.copy(paid = !o.paid), o, me) }) {
-                        Text(if (o.paid) "Tandai belum" else "Tandai lunas", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(if (o.paid) "Tandai belum" else "Tandai lunas", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
             }

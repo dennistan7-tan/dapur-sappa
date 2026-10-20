@@ -14,6 +14,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +65,12 @@ fun BelanjaTab(me: Me, data: AppData) {
     var dialog by remember { mutableStateOf<Purchase?>(null) }
     var dialogNew by remember { mutableStateOf(false) }
 
+    val focus = remember { FocusRequester() }
+    val kb = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(250)
+        try { focus.requestFocus(); kb?.show() } catch (e: Exception) { }
+    }
     val parsed = remember(text) { Parser.parse(text) }
     val kind = kindOverride ?: parsed?.kind ?: Kind.BAHAN
     val items = data.purchases.filter { it.date == viewDate.toString() }
@@ -91,6 +101,7 @@ fun BelanjaTab(me: Me, data: AppData) {
             Muted("Ketik bebas, urutan boleh terbalik. Contoh: ayam dada fillet 36rb 1kg · bensin motor antar 20rb", modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
             Field(
                 "Belanja", text, { text = it; kindOverride = null },
+                Modifier.focusRequester(focus),
                 placeholder = "selada 3 ikat 9rb",
             )
             if (parsed != null) {

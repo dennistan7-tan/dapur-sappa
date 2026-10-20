@@ -144,7 +144,7 @@ fun NavBar(title: String, sub: String, onPrev: () -> Unit, onNext: () -> Unit) {
         ArrowBtn("‹", onPrev)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title, color = c.text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-            Text(sub, color = c.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
+            if (sub.isNotBlank()) Text(sub, color = c.text2, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
         ArrowBtn("›", onNext)
     }
@@ -230,8 +230,10 @@ fun MenuBox(data: com.dapursappa.app.data.AppData, date: LocalDate, label: Strin
     Column(
         Modifier.fillMaxWidth().clip(shape).background(c.menuBg).border(1.dp, c.menuLine, shape).padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(label, color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-        Text(com.dapursappa.app.data.Fmt.dayLong(date), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            Text(com.dapursappa.app.data.Fmt.dayLong(date), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+        }
         if (lines.isEmpty()) Text(if (libur) "Libur" else "Menu belum diisi", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
         for (ln in lines) Text(ln.uppercase(), color = c.text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 22.sp)
     }

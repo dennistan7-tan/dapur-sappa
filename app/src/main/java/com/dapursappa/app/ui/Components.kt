@@ -77,7 +77,7 @@ fun AppHeader() {
             Box {
                 Text("a", color = c.headerText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                 Box(
-                    Modifier.align(Alignment.TopStart).offset(x = (-5).dp, y = 1.dp).size(7.dp)
+                    Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = 2.dp).size(7.dp)
                         .clip(androidx.compose.foundation.shape.CircleShape)
                         .background(if (online) Color(0xFF2ECC71) else Color(0xFF9E9E9E)),
                 )
