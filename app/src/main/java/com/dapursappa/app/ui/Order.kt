@@ -91,7 +91,7 @@ fun OrderTab(
                 for (e in o.extras) {
                     NoteHighlight("Tambahan: ${e.name} ${e.qty} × ${Fmt.rp(e.unitPrice)}", Modifier.padding(top = 6.dp))
                 }
-                val hasTags = o.delivery.isNotBlank() || o.onlyExtra || o.extrasTotal > 0
+                val hasTags = o.delivery.isNotBlank() || o.onlyExtra || o.extrasTotal > 0 || o.shipping > 0
                 if (hasTags) {
                     Spacer(Modifier.height(8.dp))
                     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -103,6 +103,7 @@ fun OrderTab(
                         if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
                         if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
                         else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
+                        if (o.shipping > 0) Tag("Ongkir ${Fmt.rp(o.shipping)}", c.accentSoft, c.accentText)
                     }
                 }
             }
@@ -124,6 +125,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     var location by remember { mutableStateOf(old?.location ?: "") }
     var pax by remember { mutableStateOf(old?.pax ?: 1) }
     var price by remember { mutableStateOf((old?.portionPrice ?: Calc.defaultPrice(data, date)).toString()) }
+    var ship by remember { mutableStateOf(if ((old?.shipping ?: 0L) > 0L) old!!.shipping.toString() else "") }
     val extras = remember { mutableStateListOf<Extra>().also { l -> old?.extras?.let { l.addAll(it) } } }
     var remarks by remember { mutableStateOf(old?.remarks ?: "") }
     var onlyExtra by remember { mutableStateOf(old?.onlyExtra ?: false) }
@@ -139,7 +141,8 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
     val priceL = price.toLongOrNull() ?: 0L
     val portions = if (onlyExtra) 0 else pax
     val extraTotal = extras.sumOf { it.total }
-    val total = portions * priceL + extraTotal
+    val shipL = ship.toLongOrNull() ?: 0L
+    val total = portions * priceL + extraTotal + shipL
     val nd = if (old != null) 1 else maxOf(1, days.size)
 
     Column(Modifier.fillMaxSize()) {
@@ -199,6 +202,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                 Muted("Jumlah pax")
                 Stepper(pax, { pax = it }, min = 1)
                 Field("Harga per porsi (Rp)", price, { price = digits(it) }, keyboard = KeyboardType.Number)
+                Field("Charge ongkir (Rp)", ship, { ship = digits(it) }, keyboard = KeyboardType.Number, placeholder = "0")
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -238,6 +242,11 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                         Muted("Pesanan tambahan (${extras.size} item)", size = 13); Strong(Fmt.rp(extraTotal))
                     }
                 }
+                if (shipL > 0) {
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Muted("Charge ongkir", size = 13); Strong(Fmt.rp(shipL))
+                    }
+                }
                 Rule()
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Strong("Total per hari", size = 16); Strong(Fmt.rp(total), size = 16, color = c.accentText)
@@ -270,7 +279,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                         id = id, date = d.toString(), customer = customer.trim(),
                         location = location.trim(), pax = if (onlyExtra) 0 else pax, remarks = remarks.trim(),
                         portionPrice = priceL, extras = extras.toList(), paid = paid, onlyExtra = onlyExtra, by = old?.by ?: me.idx,
-                        slot = slot, time = tn, payMethod = if (paid) old?.payMethod.orEmpty() else "",
+                        slot = slot, time = tn, payMethod = if (paid) old?.payMethod.orEmpty() else "", shipping = shipL,
                     )
                     if (old != null) Repo.saveOrder(mk(old.id, dt), old, me)
                     else Repo.saveOrders(days.sorted().map { mk(Store.newId(), it) }, me)

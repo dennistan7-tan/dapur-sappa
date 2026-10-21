@@ -178,7 +178,7 @@
   C.orderKey = (o) => o.time || C.slotTime(o.slot) || '99:99';
   C.orderPortions = (o) => (o.only ? 0 : (o.pax || 0));
   C.extrasTotal = (o) => (o.extras || []).reduce((s, e) => s + (e.q || 0) * (e.p || 0), 0);
-  C.orderTotal = (o) => C.orderPortions(o) * (o.price || 0) + C.extrasTotal(o);
+  C.orderTotal = (o) => C.orderPortions(o) * (o.price || 0) + C.extrasTotal(o) + (o.ship || 0);
 
   C.buildData = function (recs) {
     const d = { purchases: [], orders: [], menus: {}, expenses: [], audits: [], users: C.defaultUsers() };

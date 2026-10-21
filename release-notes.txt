@@ -1,5 +1,2 @@
-Dapur Sappa v0.4.8
-- Kartu order: jam dan nama lebih besar dari alamat, pax dan harga lebih jelas, catatan dan tambahan disorot lebih lembut
-- Status bayar dihapus dari tab Order (pembayaran mingguan ada di Laporan, tab Customer)
-- Tombol export Excel dipindah ke paling bawah Laporan
-- Pilihan user sekarang hanya User dan Developer
+Dapur Sappa v0.4.9
+- Order baru: kolom Charge ongkir di bawah harga per porsi; ongkir ikut omzet dan profit

@@ -68,6 +68,7 @@ data class Order(
     val slot: String = "",
     val time: String = "",
     val payMethod: String = "",
+    val shipping: Long = 0L,
 ) {
     val delivery: String get() = if (slot.isNotBlank()) slot + (if (time.isNotBlank()) " · $time" else "") else time
     /** Kunci urut pengantaran: jam yang diisi, atau jam bawaan slot; tanpa jam di paling bawah. */
@@ -81,7 +82,7 @@ data class Order(
     }
     val portions: Int get() = if (onlyExtra) 0 else pax
     val extrasTotal: Long get() = extras.sumOf { it.total }
-    val total: Long get() = portions * portionPrice + extrasTotal
+    val total: Long get() = portions * portionPrice + extrasTotal + shipping
 
     fun toJson(): JSONObject {
         val arr = JSONArray()
@@ -93,7 +94,7 @@ data class Order(
             .put("location", location).put("pax", pax).put("remarks", remarks)
             .put("price", portionPrice).put("extras", arr).put("paid", paid)
             .put("only", onlyExtra).put("by", by).put("del", deleted)
-            .put("slot", slot).put("time", time).put("pm", payMethod)
+            .put("slot", slot).put("time", time).put("pm", payMethod).put("ship", shipping)
     }
 
     companion object {
@@ -110,7 +111,7 @@ data class Order(
                 j.getString("id"), j.optString("date"), j.optString("customer"), j.optString("location"),
                 j.optInt("pax"), j.optString("remarks"), j.optLong("price", 20000), list,
                 j.optBoolean("paid"), j.optBoolean("only"), j.optInt("by", -1), j.optBoolean("del"),
-                j.optString("slot"), j.optString("time"), j.optString("pm"),
+                j.optString("slot"), j.optString("time"), j.optString("pm"), j.optLong("ship"),
             )
         }
     }

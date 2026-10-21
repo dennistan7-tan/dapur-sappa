@@ -61,6 +61,7 @@
     if (old.location !== o.location) ch.push('Lokasi ' + old.location + ' → ' + o.location);
     if (old.pax !== o.pax) ch.push('Pax ' + old.pax + ' → ' + o.pax);
     if (old.price !== o.price) ch.push('Harga porsi ' + C.rp(old.price) + ' → ' + C.rp(o.price));
+    if ((old.ship || 0) !== (o.ship || 0)) ch.push('Charge ongkir ' + C.rp(old.ship || 0) + ' → ' + C.rp(o.ship || 0));
     if (C.extrasTotal(old) !== C.extrasTotal(o)) ch.push('Tambahan ' + C.rp(C.extrasTotal(old)) + ' → ' + C.rp(C.extrasTotal(o)));
     if (old.paid !== o.paid) ch.push(o.paid ? 'Belum bayar → Lunas' : 'Lunas → Belum bayar');
     if (old.only !== o.only) ch.push(o.only ? 'Jadi lauk saja' : 'Jadi porsi');
@@ -231,7 +232,7 @@
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
     orders.forEach((o) => {
       const addr = o.location ? `<span class="addr">${esc(o.location)}</span><span class="mu"> · </span>` : '';
-      const tags = [C.deliv(o) ? tag(C.deliv(o), 'ac') : '', o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''].join('');
+      const tags = [C.deliv(o) ? tag(C.deliv(o), 'ac') : '', o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : '', o.ship ? tag('Ongkir ' + C.rp(o.ship), 'ac') : ''].join('');
       h += `<div class="card t-order click" data-a="editorder" data-v="${o.id}"><div class="row"><span>${o.time ? `<b class="acc big">${esc(o.time)}</b> ` : ''}<b class="big">${esc(o.customer)}</b></span><b class="big">${C.rp(C.orderTotal(o))}</b></div><div class="subl">${addr}<b class="acc paxb">${o.only ? 'tanpa porsi' : o.pax + ' pax'}</b></div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}${tags ? `<div class="tags">${tags}</div>` : ''}</div>`;
     });
     return h;
@@ -242,13 +243,13 @@
       id: old ? old.id : null, date: old ? old.date : date, days: [date], customer: old ? old.customer : '', location: old ? old.location : '',
       pax: old ? old.pax : 1, price: String(old ? old.price : C.defaultPrice(D(), date)), remarks: old ? old.remarks : '',
       only: old ? !!old.only : false, paid: old ? !!old.paid : false, extras: old ? JSON.parse(JSON.stringify(old.extras || [])) : [],
-      slot: old ? (old.slot || '') : '', hh: old && old.time ? old.time.split(':')[0] : '', mm: old && old.time ? (old.time.split(':')[1] || '') : '', err: '',
+      ship: old && old.ship ? String(old.ship) : '', slot: old ? (old.slot || '') : '', hh: old && old.time ? old.time.split(':')[0] : '', mm: old && old.time ? (old.time.split(':')[1] || '') : '', err: '',
     };
     st.route = { name: 'order' };
   }
   function vOrderForm(me) {
     const f = st.f.of; const price = +f.price || 0; const portions = f.only ? 0 : f.pax;
-    const et = f.extras.reduce((s, e) => s + e.q * e.p, 0); const total = portions * price + et;
+    const et = f.extras.reduce((s, e) => s + e.q * e.p, 0); const shipN = +f.ship || 0; const total = portions * price + et + shipN;
     const nd = f.id ? 1 : Math.max(1, f.days.length);
     let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>${f.id ? 'Edit order' : 'Order baru'}</h2><p class="mu">${esc(menuBanner(f.date))}</p></div><div class="card form t-order">`;
     if (f.id) {
@@ -267,13 +268,14 @@
     if (!f.only) {
       h += `<div class="mu">Jumlah pax</div><div class="step"><button class="arr" data-a="ofpax" data-v="-1">−</button><b>${f.pax}</b><button class="arr" data-a="ofpax" data-v="1">+</button></div>`;
       h += field('Harga per porsi (Rp)', 'of.price', f.price, 'inputmode="numeric" data-num="1"');
+      h += field('Charge ongkir (Rp)', 'of.ship', f.ship, 'inputmode="numeric" data-num="1" placeholder="0"');
     }
     h += `<div class="row"><b>Pesanan tambahan</b><span class="mu">${f.extras.length} item</span></div>`;
     f.extras.forEach((e, i) => { h += `<div class="card inner row"><div><b>${esc(e.n)}</b><div class="mu">${e.q} × ${C.rp(e.p)}${e.c ? ' · ' + esc(e.c) : ''}</div></div><div><b>${C.rp(e.q * e.p)}</b> <button class="link" data-a="ofdelx" data-v="${i}">Hapus</button></div></div>`; });
     h += '<button class="btn o" data-a="ofaddx">+ Tambah pesanan</button>';
     h += field('Remarks', 'of.remarks', f.remarks, 'placeholder="mis. tanpa sambal"');
     h += `<div class="mu">Pembayaran</div><div class="chips">${chip('Lunas', f.paid, 'ofpaid', '1')}${chip('Belum bayar', !f.paid, 'ofpaid', '0')}</div>`;
-    h += `<div class="card soft">${f.only ? '' : `<div class="row"><span class="mu">Porsi ${f.pax} × ${C.rp(price)}</span><b>${C.rp(f.pax * price)}</b></div>`}${f.extras.length ? `<div class="row"><span class="mu">Pesanan tambahan (${f.extras.length} item)</span><b>${C.rp(et)}</b></div>` : ''}<div class="row tot"><b>Total per hari</b><b class="acc">${C.rp(total)}</b></div>${nd > 1 ? `<div class="row"><b>Total ${nd} hari</b><b class="acc">${C.rp(total * nd)}</b></div>` : ''}</div>`;
+    h += `<div class="card soft">${f.only ? '' : `<div class="row"><span class="mu">Porsi ${f.pax} × ${C.rp(price)}</span><b>${C.rp(f.pax * price)}</b></div>`}${f.extras.length ? `<div class="row"><span class="mu">Pesanan tambahan (${f.extras.length} item)</span><b>${C.rp(et)}</b></div>` : ''}${shipN ? `<div class="row"><span class="mu">Charge ongkir</span><b>${C.rp(shipN)}</b></div>` : ''}<div class="row tot"><b>Total per hari</b><b class="acc">${C.rp(total)}</b></div>${nd > 1 ? `<div class="row"><b>Total ${nd} hari</b><b class="acc">${C.rp(total * nd)}</b></div>` : ''}</div>`;
     if (portions > 0) h += `<p class="mu sm">Kemasan ikut terpotong ${portions} pcs per jenis kemasan.</p>`;
     if (f.err) h += `<p class="err">${esc(f.err)}</p>`;
     h += `<div class="btns"><button class="btn" data-a="ofsave">${nd > 1 ? 'Simpan ' + nd + ' order' : 'Simpan order'}</button><button class="btn o" data-a="back">Batal</button>${f.id ? '<button class="link dng" data-a="ofdel">Hapus order</button>' : ''}</div></div>`;
@@ -652,7 +654,7 @@
       else if (!f.id && !f.days.length) f.err = 'Pilih minimal 1 hari kirim.';
       else {
         const old = f.id ? D().orders.find((o) => o.id === f.id) : null;
-        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: tstr, pm: f.paid && old ? (old.pm || '') : '', by: old ? old.by : me.idx, del: false });
+        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: tstr, pm: f.paid && old ? (old.pm || '') : '', ship: +f.ship || 0, by: old ? old.by : me.idx, del: false });
         if (f.id) { saveOrder(mk(f.id, f.date), old, me); st.orderDate = f.date; }
         else { const list = f.days.slice().sort().map((d) => mk(C.uuid(), d)); saveOrders(list, me); st.orderDate = list[0].date; }
         st.route = null; render(); return;

@@ -41,6 +41,7 @@ object Repo {
             if (old.location != o.location) ch.add("Lokasi ${old.location} → ${o.location}")
             if (old.pax != o.pax) ch.add("Pax ${old.pax} → ${o.pax}")
             if (old.portionPrice != o.portionPrice) ch.add("Harga porsi ${Fmt.rp(old.portionPrice)} → ${Fmt.rp(o.portionPrice)}")
+            if (old.shipping != o.shipping) ch.add("Charge ongkir ${Fmt.rp(old.shipping)} → ${Fmt.rp(o.shipping)}")
             if (old.extrasTotal != o.extrasTotal) ch.add("Tambahan ${Fmt.rp(old.extrasTotal)} → ${Fmt.rp(o.extrasTotal)}")
             if (old.paid != o.paid) ch.add(if (o.paid) "Belum bayar → Lunas" else "Lunas → Belum bayar")
             if (old.onlyExtra != o.onlyExtra) ch.add(if (o.onlyExtra) "Jadi lauk saja" else "Jadi porsi")
