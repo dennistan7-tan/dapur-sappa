@@ -286,7 +286,7 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
             Muted("Semua user punya akses penuh (belanja, order, menu, laporan).")
             for (i in names.indices) {
                 SCard {
-                    Field("Nama User ${i + 1}", names[i], { names[i] = it.take(24) })
+                    Field("Nama User", names[i], { names[i] = it.take(24) })
                 }
             }
 
@@ -318,7 +318,7 @@ fun KelolaUserScreen(me: Me, data: AppData, prefs: Prefs, onBack: () -> Unit) {
 
             if (msg.isNotEmpty()) Muted(msg, color = c.ok)
             PrimaryButton("Simpan perubahan") {
-                val list = names.indices.map { UserCfg(names[it].ifBlank { "User ${it + 1}" }, "User") }
+                val list = names.indices.map { UserCfg(names[it].ifBlank { "User" }, "User") }
                 if (list != data.users) Repo.saveUsers(list, me)
                 prefs.fbProject = project
                 prefs.fbKey = key

@@ -23,7 +23,7 @@
     return { idx: i, isDev: false, name: u.name, role: 'User', label: 'User', canAdmin: true };
   }
   const canEdit = () => true;
-  const userName = (idx) => (idx < 0 ? 'Developer' : (D().users[idx] ? D().users[idx].name : 'User ' + (idx + 1)));
+  const userName = (idx) => (idx < 0 ? 'Developer' : (D().users[idx] ? D().users[idx].name : 'User'));
   const devHash = () => LS.get('ds_devhash', '') || CFG.DEV_DEFAULT_HASH;
   const isDark = () => {
     const t = document.documentElement.getAttribute('data-theme');
@@ -230,11 +230,10 @@
     h += '<h3>Daftar order</h3>';
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
     orders.forEach((o) => {
-      const sub = (o.location ? o.location + ' · ' : '') + (o.only ? 'tanpa porsi' : o.pax + ' pax');
-      h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><span>${o.time ? `<b class="acc tm">${esc(o.time)}</b> ` : ''}<b>${esc(o.customer)}</b></span><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
-        <div class="tags">${C.deliv(o) ? tag(C.deliv(o), 'ac') : ''}${o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''}${o.paid ? tag('Lunas' + (o.pm ? ' · ' + o.pm : ''), 'ok') : tag('Belum bayar', 'wr')}<span class="sp"></span><button class="link" data-a="togglepaid" data-v="${o.id}">${o.paid ? 'Tandai belum' : 'Tandai lunas'}</button></div></div>`;
+      const addr = o.location ? `<span class="addr">${esc(o.location)}</span><span class="mu"> · </span>` : '';
+      const tags = [C.deliv(o) ? tag(C.deliv(o), 'ac') : '', o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''].join('');
+      h += `<div class="card t-order click" data-a="editorder" data-v="${o.id}"><div class="row"><span>${o.time ? `<b class="acc big">${esc(o.time)}</b> ` : ''}<b class="big">${esc(o.customer)}</b></span><b class="big">${C.rp(C.orderTotal(o))}</b></div><div class="subl">${addr}<b class="acc paxb">${o.only ? 'tanpa porsi' : o.pax + ' pax'}</b></div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}${tags ? `<div class="tags">${tags}</div>` : ''}</div>`;
     });
-    if (unpaid.length) h += `<div class="card warnbg"><div class="row"><b>Belum dibayar</b><b>${C.rp(unpaid.reduce((s, o) => s + C.orderTotal(o), 0))}</b></div><div class="mu">${unpaid.length} order belum lunas</div></div>`;
     return h;
   }
   function orderFormInit(id, date) {
@@ -322,7 +321,7 @@
   function vLaporan() {
     const rm = st.repMonth || (st.repMonth = C.firstOfMonth(today()));
     const rw = st.repWeek || (st.repWeek = C.mondayOf(today()));
-    let h = '<button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
+    let h = '';
     h += `<div class="chips">${chip('Harian', st.repTab === 0, 'reptab', 0)}${chip('Mingguan', st.repTab === 1, 'reptab', 1)}${chip('Bulanan', st.repTab === 2, 'reptab', 2)}${chip('Customer', st.repTab === 3, 'reptab', 3)}</div>`;
     const monthNav = () => {
       const t = today(); const cur = rm.substring(0, 7) === t.substring(0, 7);
@@ -365,7 +364,7 @@
       if (st.f.unpaid) h += m.unpaid.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((o) => `<div class="row ln"><span>${esc(o.customer)} · ${C.dayShort(o.date)}</span><b>${C.rp(C.orderTotal(o))}</b></div>`).join('');
       h += '</div>';
     }
-    return h;
+    return h + '<button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
   }
 
   function vCustomer(rm) {
@@ -462,7 +461,7 @@
     if (!st.f.ku) st.f.ku = { users: D().users.map((u) => ({ name: u.name })), project: Store.project(), key: Store.apiKey(), msg: '' };
     const f = st.f.ku;
     let h = '<h2>Kelola user</h2><p class="mu">Hanya developer. Semua user punya akses penuh (belanja, order, menu, laporan).</p>';
-    f.users.forEach((u, i) => { h += `<div class="card form">${field('Nama User ' + (i + 1), 'ku.n' + i, u.name)}</div>`; });
+    f.users.forEach((u, i) => { h += `<div class="card form">${field('Nama User', 'ku.n' + i, u.name)}</div>`; });
     h += '<h3>Keamanan</h3>';
     h += '<div class="card row"><div><b>Kode toko</b><div class="mu">5 digit · diminta sekali per browser</div></div><b>•••••</b></div>';
     h += '<div class="card form"><b>Akun developer</b><div class="mu">Masuk hanya dengan password</div><button class="btn o" data-a="kupass">Ganti password developer</button></div>';
@@ -688,7 +687,7 @@
     },
     kusave() {
       const f = st.f.ku, me = getMe();
-      const users = f.users.map((u, i) => ({ name: (u.name || '').trim() || 'User ' + (i + 1), role: 'User' }));
+      const users = f.users.map((u, i) => ({ name: (u.name || '').trim() || 'User', role: 'User' }));
       if (JSON.stringify(users) !== JSON.stringify(D().users)) saveUsers(users, me);
       LS.set('ds_project', f.project.trim()); LS.set('ds_key', f.key.trim());
       f.msg = 'Tersimpan.'; Store.kick(); keepRender();

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -240,14 +241,18 @@ fun MenuBox(data: com.dapursappa.app.data.AppData, date: LocalDate, label: Strin
     }
 }
 
-/** Catatan penting di kartu order (remarks / tambahan): font lebih besar dengan latar menyala. */
+/** Catatan penting di kartu order (remarks / tambahan): sorotan lembut dengan garis di kiri. */
 @Composable
 fun NoteHighlight(text: String, modifier: Modifier = Modifier) {
     val c = Sappa.c
-    Text(
-        text,
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.warnSoft)
-            .border(1.5.dp, c.warn, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 6.dp),
-        color = c.warn, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 21.sp,
-    )
+    Row(
+        modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min)
+            .clip(RoundedCornerShape(8.dp)).background(c.warn.copy(alpha = 0.14f)),
+    ) {
+        Box(Modifier.width(4.dp).fillMaxHeight().background(c.warn))
+        Text(
+            text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            color = c.warn, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 19.sp,
+        )
+    }
 }

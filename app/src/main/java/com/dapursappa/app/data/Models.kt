@@ -181,7 +181,7 @@ data class Audit(
     }
 }
 
-fun defaultUsers(): List<UserCfg> = List(2) { UserCfg("User ${it + 1}", "User") }
+fun defaultUsers(): List<UserCfg> = listOf(UserCfg("User", "User"))
 
 fun usersToJson(users: List<UserCfg>): JSONObject {
     val arr = JSONArray()
@@ -194,7 +194,10 @@ fun usersFromJson(j: JSONObject): List<UserCfg> {
     val out = ArrayList<UserCfg>()
     for (i in 0 until arr.length()) {
         val o = arr.getJSONObject(i)
-        if (out.size < 2) out.add(UserCfg(o.optString("name"), "User"))
+        if (out.isEmpty()) {
+            val n = o.optString("name").trim()
+            out.add(UserCfg(if (n.isEmpty() || Regex("User \\d+").matches(n)) "User" else n, "User"))
+        }
     }
     return if (out.isEmpty()) defaultUsers() else out
 }

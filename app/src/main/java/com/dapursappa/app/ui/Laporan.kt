@@ -54,8 +54,6 @@ fun LaporanTab(
     ) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
         var xmsg by remember { mutableStateOf("") }
-        OutlineButton("Export laporan ke Excel (bulan, minggu, hari, pengeluaran)") { xmsg = exportLaporanExcel(ctx, data) }
-        if (xmsg.isNotEmpty()) Muted(xmsg)
         ChipScroll {
             Chip("Harian", tab == 0) { onTab(0) }
             Chip("Mingguan", tab == 1) { onTab(1) }
@@ -68,6 +66,8 @@ fun LaporanTab(
             3 -> CustomerReport(me, data, month, onMonth)
             else -> BulananReport(data, month, onMonth, onDay)
         }
+        OutlineButton("Export laporan ke Excel (bulan, minggu, hari, pengeluaran)") { xmsg = exportLaporanExcel(ctx, data) }
+        if (xmsg.isNotEmpty()) Muted(xmsg)
         Spacer(Modifier.height(8.dp))
     }
 }

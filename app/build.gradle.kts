@@ -18,8 +18,8 @@ android {
         applicationId = "com.dapursappa.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 14
-        versionName = "0.4.7"
+        versionCode = 15
+        versionName = "0.4.8"
     }
 
     // Kunci tanda tangan tetap supaya update bisa dipasang di atas versi lama,

@@ -72,7 +72,7 @@ fun SummaryTab(
 }
 
 fun userName(data: AppData, idx: Int): String =
-    if (idx < 0) "Developer" else data.users.getOrNull(idx)?.name ?: "User ${idx + 1}"
+    if (idx < 0) "Developer" else data.users.getOrNull(idx)?.name ?: "User"
 
 @Composable
 fun DayCard(d: DayCalc, onClick: () -> Unit) {

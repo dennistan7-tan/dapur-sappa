@@ -1,4 +1,5 @@
-Dapur Sappa v0.4.7
-- Laporan: tab Customer (total customer, order, pax, profit gain dan rate per customer)
-- Tandai lunas per customer per minggu, pilih metode: Cash, Transfer, atau lainnya
-- Customer lunas berwarna hijau; metode bayar tampil di kartu order
+Dapur Sappa v0.4.8
+- Kartu order: jam dan nama lebih besar dari alamat, pax dan harga lebih jelas, catatan dan tambahan disorot lebih lembut
+- Status bayar dihapus dari tab Order (pembayaran mingguan ada di Laporan, tab Customer)
+- Tombol export Excel dipindah ke paling bawah Laporan
+- Pilihan user sekarang hanya User dan Developer

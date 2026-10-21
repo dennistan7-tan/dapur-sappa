@@ -69,51 +69,45 @@ fun OrderTab(
         if (orders.isEmpty()) Muted("Belum ada order di tanggal ini.", modifier = Modifier.padding(vertical = 8.dp))
         for (o in orders) {
             ClickCard(onClick = { onOpen(o.id, date) }, tone = Tone.Order) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         if (o.time.isNotBlank()) {
-                            Text(o.time, color = c.accentText, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(o.time, color = c.accentText, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
                             Spacer(Modifier.width(8.dp))
                         }
-                        Strong(o.customer, size = 15)
+                        Strong(o.customer, size = 19, modifier = Modifier.weight(1f, fill = false))
                     }
-                    Strong(Fmt.rp(o.total), size = 15)
+                    Spacer(Modifier.width(8.dp))
+                    Strong(Fmt.rp(o.total), size = 19)
                 }
-                val sub = (if (o.location.isBlank()) "" else o.location + " · ") + (if (o.onlyExtra) "tanpa porsi" else "${o.pax} pax")
-                Muted(sub)
+                Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (o.location.isNotBlank()) {
+                        Text(o.location, color = c.text2, fontSize = 13.sp, modifier = Modifier.weight(1f, fill = false))
+                        Text("  ·  ", color = c.text2, fontSize = 13.sp)
+                    }
+                    Text(if (o.onlyExtra) "tanpa porsi" else "${o.pax} pax", color = c.accentText, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                }
                 if (o.remarks.isNotBlank()) NoteHighlight("Catatan: " + o.remarks, Modifier.padding(top = 6.dp))
                 for (e in o.extras) {
                     NoteHighlight("Tambahan: ${e.name} ${e.qty} × ${Fmt.rp(e.unitPrice)}", Modifier.padding(top = 6.dp))
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                val hasTags = o.delivery.isNotBlank() || o.onlyExtra || o.extrasTotal > 0
+                if (hasTags) {
+                    Spacer(Modifier.height(8.dp))
                     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                     androidx.compose.foundation.layout.FlowRow(
-                        Modifier.weight(1f),
+                        Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
                         if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
                         else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
-                        if (o.paid) Tag("Lunas" + (if (o.payMethod.isNotBlank()) " · " + o.payMethod else ""), c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
-                    }
-                    TextButton(onClick = { Repo.saveOrder(o.copy(paid = !o.paid, payMethod = if (o.paid) "" else o.payMethod), o, me) }) {
-                        Text(if (o.paid) "Tandai belum" else "Tandai lunas", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
             }
         }
 
-        if (unpaid.isNotEmpty()) {
-            SCard(background = c.warnSoft) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Strong("Belum dibayar", color = c.warn)
-                    Strong(Fmt.rp(unpaid.sumOf { it.total }), color = c.warn)
-                }
-                Muted("${unpaid.size} order belum lunas", color = c.warn)
-            }
-        }
         Spacer(Modifier.height(8.dp))
     }
 }

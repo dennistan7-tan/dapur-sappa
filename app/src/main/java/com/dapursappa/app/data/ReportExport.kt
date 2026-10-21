@@ -97,7 +97,7 @@ object ReportExport {
         recs.sortWith(compareBy({ it.date }, { it.cat }))
         val rrows = ArrayList<List<Any?>>()
         rrows.add(listOf("Tanggal", "Kategori", "Nama / item", "Jumlah", "Total (Rp)", "Dipakai untuk tanggal", "Dibebankan ke", "Dicatat oleh"))
-        for (r in recs) rrows.add(listOf(r.date, r.cat, r.name, r.qty, r.amount, r.use, r.charge, if (r.by < 0) "Developer" else d.users.getOrNull(r.by)?.name ?: "User ${r.by + 1}"))
+        for (r in recs) rrows.add(listOf(r.date, r.cat, r.name, r.qty, r.amount, r.use, r.charge, if (r.by < 0) "Developer" else d.users.getOrNull(r.by)?.name ?: "User"))
         rrows.add(listOf(XC("TOTAL", 5), XC("", 5), XC("", 5), XC("", 5), XC(recs.sumOf { it.amount }, 4)))
         out.add(XSheet("Pengeluaran", listOf(12, 20, 30, 12, 14, 18, 24, 14), rrows))
 

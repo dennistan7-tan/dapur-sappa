@@ -169,7 +169,7 @@
   };
 
   // ---------- model & kalkulasi ----------
-  C.defaultUsers = () => [{ name: 'User 1', role: 'User' }, { name: 'User 2', role: 'User' }];
+  C.defaultUsers = () => [{ name: 'User', role: 'User' }];
   // waktu pengantaran
   C.SLOTS = [['PAGI', '07:00'], ['SIANG', '12:00'], ['SORE', '16:00'], ['MALAM', '19:00']];
   C.slotTime = (s) => { const x = C.SLOTS.find((q) => q[0] === s); return x ? x[1] : ''; };
@@ -198,7 +198,7 @@
         }
         case 'e': if (!o.del) d.expenses.push(o); break;
         case 'a': d.audits.push(o); break;
-        case 'c': if (o.users && o.users.length) d.users = o.users.slice(0, 2).map((u) => ({ name: u.name, role: 'User' })); break;
+        case 'c': if (o.users && o.users.length) d.users = o.users.slice(0, 1).map((u) => ({ name: !(u.name || '').trim() || /^User \d+$/.test(u.name.trim()) ? 'User' : u.name, role: 'User' })); break;
       }
     });
     d.audits.sort((a, b) => b.ts - a.ts);
