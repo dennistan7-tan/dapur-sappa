@@ -39,7 +39,54 @@ data class MonthCalc(
     val modal: Long get() = bahanCost + kemasanCost
 }
 
+data class CustWeek(
+    val week: LocalDate, val orders: List<Order>, val pax: Int, val revenue: Long,
+    val unpaid: List<Order>, val methods: List<String>,
+) {
+    val unpaidSum: Long get() = unpaid.sumOf { it.total }
+    val paid: Boolean get() = unpaid.isEmpty()
+}
+
+data class CustCalc(
+    val key: String, val name: String, val orders: List<Order>, val pax: Int,
+    val revenue: Long, val profit: Long, val weeks: List<CustWeek>,
+) {
+    val unpaidSum: Long get() = weeks.sumOf { it.unpaidSum }
+    val allPaid: Boolean get() = unpaidSum == 0L
+}
+
+data class CustSummary(val list: List<CustCalc>) {
+    val customers: Int get() = list.size
+    val orders: Int get() = list.sumOf { it.orders.size }
+    val pax: Int get() = list.sumOf { it.pax }
+    val revenue: Long get() = list.sumOf { it.revenue }
+    val profit: Long get() = list.sumOf { it.profit }
+    val unpaid: Long get() = list.sumOf { it.unpaidSum }
+}
+
 object Calc {
+    /** Laporan per customer sebulan. Profit = omzet dikurangi modal bahan dan kemasan per porsi di hari order. */
+    fun customers(d: AppData, any: LocalDate): CustSummary {
+        val prefix = any.withDayOfMonth(1).toString().substring(0, 7)
+        val cache = HashMap<String, DayCalc>()
+        val groups = d.orders.filter { it.date.startsWith(prefix) }.groupBy { it.customer.trim().lowercase() }
+        val list = groups.map { (key, os) ->
+            var cost = 0.0
+            for (o in os) cost += o.portions * cache.getOrPut(o.date) { day(d, LocalDate.parse(o.date)) }.costPerPax
+            val revenue = os.sumOf { it.total }
+            val weeks = os.groupBy { Fmt.mondayOf(LocalDate.parse(it.date)) }.toSortedMap().map { (wk, wos) ->
+                val billable = wos.filter { it.total > 0 }
+                CustWeek(
+                    wk, wos.sortedBy { it.date }, wos.sumOf { it.portions }, wos.sumOf { it.total },
+                    billable.filter { !it.paid },
+                    billable.filter { it.paid && it.payMethod.isNotBlank() }.map { it.payMethod }.distinct(),
+                )
+            }
+            CustCalc(key, os.first().customer.trim(), os, os.sumOf { it.portions }, revenue, Math.round(revenue - cost), weeks)
+        }.sortedWith(compareByDescending<CustCalc> { it.revenue }.thenBy { it.name })
+        return CustSummary(list)
+    }
+
     fun menuOf(d: AppData, date: LocalDate): Menu? = d.menus[Fmt.mondayOf(date).toString()]
 
     /** Menu mentah: tiap baris dipisah newline (maks 3 baris). */

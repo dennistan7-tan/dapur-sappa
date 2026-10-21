@@ -65,6 +65,16 @@ object Repo {
         }
     }
 
+    /** Tandai lunas / batal lunas beberapa order sekaligus (satu customer, satu minggu). */
+    fun markPaid(list: List<Order>, paid: Boolean, method: String, me: Me) {
+        if (list.isEmpty()) return
+        list.forEach { Store.put(it.copy(paid = paid, payMethod = if (paid) method else "").toJson()) }
+        val f = list.first()
+        val wk = Fmt.weekNo(LocalDate.parse(f.date))
+        if (paid) log(me, "Order", "Lunas ${f.customer} · Week $wk", "${list.size} order · ${Fmt.rp(list.sumOf { it.total })} · via $method")
+        else log(me, "Order", "Batal lunas ${f.customer} · Week $wk", "${list.size} order kembali Belum bayar")
+    }
+
     fun deleteOrder(o: Order, me: Me) {
         Store.put(o.copy(deleted = true).toJson())
         log(me, "Order", "Hapus order ${o.customer}", orderLine(o) + " · Dihapus")

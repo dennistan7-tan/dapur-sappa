@@ -96,9 +96,9 @@ fun OrderTab(
                         if (o.delivery.isNotBlank()) Tag(o.delivery, c.accentSoft, c.accentText)
                         if (o.onlyExtra) Tag("Lauk saja", c.accentSoft, c.accentText)
                         else if (o.extrasTotal > 0) Tag("+ Tambahan ${Fmt.rp(o.extrasTotal)}", c.accentSoft, c.accentText)
-                        if (o.paid) Tag("Lunas", c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
+                        if (o.paid) Tag("Lunas" + (if (o.payMethod.isNotBlank()) " · " + o.payMethod else ""), c.okSoft, c.ok) else Tag("Belum bayar", c.warnSoft, c.warn)
                     }
-                    TextButton(onClick = { Repo.saveOrder(o.copy(paid = !o.paid), o, me) }) {
+                    TextButton(onClick = { Repo.saveOrder(o.copy(paid = !o.paid, payMethod = if (o.paid) "" else o.payMethod), o, me) }) {
                         Text(if (o.paid) "Tandai belum" else "Tandai lunas", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
@@ -276,7 +276,7 @@ fun OrderForm(me: Me, data: AppData, orderId: String?, date: LocalDate, onClose:
                         id = id, date = d.toString(), customer = customer.trim(),
                         location = location.trim(), pax = if (onlyExtra) 0 else pax, remarks = remarks.trim(),
                         portionPrice = priceL, extras = extras.toList(), paid = paid, onlyExtra = onlyExtra, by = old?.by ?: me.idx,
-                        slot = slot, time = tn,
+                        slot = slot, time = tn, payMethod = if (paid) old?.payMethod.orEmpty() else "",
                     )
                     if (old != null) Repo.saveOrder(mk(old.id, dt), old, me)
                     else Repo.saveOrders(days.sorted().map { mk(Store.newId(), it) }, me)

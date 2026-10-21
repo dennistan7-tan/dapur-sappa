@@ -1,3 +1,4 @@
-Dapur Sappa v0.4.6
-- Order: catatan (remarks) dan tambahan disorot, font lebih besar dan warna menyala
-- Summary: kartu hari ini diberi garis tepi tebal
+Dapur Sappa v0.4.7
+- Laporan: tab Customer (total customer, order, pax, profit gain dan rate per customer)
+- Tandai lunas per customer per minggu, pilih metode: Cash, Transfer, atau lainnya
+- Customer lunas berwarna hijau; metode bayar tampil di kartu order

@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 object Config {
     // Samakan dengan versionName di app/build.gradle.kts
-    const val APP_VERSION = "0.4.6"
+    const val APP_VERSION = "0.4.7"
 
     // Kode toko disimpan sebagai hash.
     private const val CODE_SHA256 = "c90117a86df5ad6cff0574e82abc47165bc43d412365f33075da2a369c2c992f"

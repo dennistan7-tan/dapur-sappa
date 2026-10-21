@@ -1,6 +1,10 @@
 package com.dapursappa.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,10 +29,16 @@ import com.dapursappa.app.data.AppData
 import com.dapursappa.app.data.Calc
 import com.dapursappa.app.data.DayCalc
 import com.dapursappa.app.data.Fmt
+import com.dapursappa.app.data.Me
+import com.dapursappa.app.data.Order
+import com.dapursappa.app.data.Repo
+import com.dapursappa.app.data.CustCalc
+import com.dapursappa.app.data.CustWeek
 import java.time.LocalDate
 
 @Composable
 fun LaporanTab(
+    me: Me,
     data: AppData,
     tab: Int,
     onTab: (Int) -> Unit,
@@ -50,10 +60,12 @@ fun LaporanTab(
             Chip("Harian", tab == 0) { onTab(0) }
             Chip("Mingguan", tab == 1) { onTab(1) }
             Chip("Bulanan", tab == 2) { onTab(2) }
+            Chip("Customer", tab == 3) { onTab(3) }
         }
         when (tab) {
             0 -> HarianReport(data, month, onMonth, onDay)
             1 -> MingguanReport(data, week, onWeek, onDay)
+            3 -> CustomerReport(me, data, month, onMonth)
             else -> BulananReport(data, month, onMonth, onDay)
         }
         Spacer(Modifier.height(8.dp))
@@ -220,5 +232,120 @@ private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) 
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun CustomerReport(me: Me, data: AppData, month: LocalDate, onMonth: (LocalDate) -> Unit) {
+    val c = Sappa.c
+    val r = Calc.customers(data, month)
+    val open = remember { mutableStateListOf<String>() }
+    var payFor by remember { mutableStateOf<Pair<CustCalc, CustWeek>?>(null) }
+    MonthNav(month, onMonth)
+    StatTile("Total customer bulan ini", r.customers.toString(), Modifier.fillMaxWidth(), highlight = true)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Total order", r.orders.toString(), Modifier.weight(1f))
+        StatTile("Total pax", r.pax.toString(), Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Omzet", Fmt.rp(r.revenue), Modifier.weight(1f))
+        StatTile("Profit gain", Fmt.rp(r.profit), Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatTile("Profit rate", Fmt.pct(r.profit, r.revenue), Modifier.weight(1f))
+        StatTile("Belum lunas", Fmt.rp(r.unpaid), Modifier.weight(1f))
+    }
+    SectionTitle("Per customer")
+    if (r.list.isEmpty()) Muted("Belum ada order di bulan ini.")
+    for (cu in r.list) {
+        val isOpen = open.contains(cu.key)
+        val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        androidx.compose.foundation.layout.Column(
+            Modifier.fillMaxWidth()
+                .clip(shape)
+                .background(if (cu.allPaid) c.okSoft else c.surface)
+                .border(if (cu.allPaid) 2.dp else 1.dp, if (cu.allPaid) c.ok else c.border, shape)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().clickable { if (isOpen) open.remove(cu.key) else open.add(cu.key) },
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Strong((if (isOpen) "▾ " else "▸ ") + cu.name, size = 15)
+                    Muted("${cu.orders.size} order · ${cu.pax} pax")
+                }
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                    Strong(Fmt.rp(cu.revenue), size = 15)
+                    Muted("Profit ${Fmt.rp(cu.profit)} · Rate ${Fmt.pct(cu.profit, cu.revenue)}")
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            if (cu.allPaid) Tag("Lunas semua", c.okSoft, c.ok) else Muted("Belum lunas ${Fmt.rp(cu.unpaidSum)}")
+            if (isOpen) {
+                for (w in cu.weeks) {
+                    Spacer(Modifier.height(8.dp))
+                    Rule()
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                            .background(if (w.paid) c.okSoft else androidx.compose.ui.graphics.Color.Transparent)
+                            .padding(if (w.paid) 8.dp else 0.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Strong("Week ${Fmt.weekNo(w.week)} · ${w.orders.size} order · ${w.pax} pax", size = 13)
+                            Muted(w.orders.joinToString(", ") { Fmt.dayShort(LocalDate.parse(it.date)).substringBefore(',') + " " + LocalDate.parse(it.date).dayOfMonth })
+                        }
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                            Strong(Fmt.rp(w.revenue), size = 13)
+                            if (w.paid) Tag("Lunas" + (if (w.methods.isNotEmpty()) " · " + (if (w.methods.size > 1) "Campur" else w.methods[0]) else ""), c.okSoft, c.ok)
+                            else Muted("Belum lunas")
+                        }
+                    }
+                    if (w.paid) {
+                        TextButton(onClick = {
+                            Repo.markPaid(w.orders.filter { it.total > 0 && it.paid }, false, "", me)
+                        }) { Text("Batalkan lunas", color = c.accentText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    } else {
+                        Spacer(Modifier.height(6.dp))
+                        PrimaryButton("Tandai lunas ${Fmt.rp(w.unpaidSum)}") { payFor = cu to w }
+                    }
+                }
+            }
+        }
+    }
+    Muted("Profit per customer = omzet dikurangi modal bahan dan kemasan per porsi di hari order. Pengeluaran lain dan biaya bulanan tidak dibagi ke customer. Rate = profit ÷ omzet.")
+
+    payFor?.let { (cu, w) ->
+        var method by remember(cu.key, w.week) { mutableStateOf("") }
+        var custom by remember(cu.key, w.week) { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { payFor = null },
+            title = { Text("Tandai lunas", fontWeight = FontWeight.ExtraBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${cu.name} · Week ${Fmt.weekNo(w.week)} · ${Fmt.rp(w.unpaidSum)}", color = c.text, fontSize = 14.sp)
+                    Muted("Dibayar via")
+                    ChipScroll {
+                        for (m in listOf("Cash", "Transfer", "Lainnya")) Chip(m, method == m) { method = m }
+                    }
+                    if (method == "Lainnya") Field("Metode lain", custom, { custom = it }, placeholder = "mis. QRIS, GoPay")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = method.isNotEmpty(),
+                    onClick = {
+                        val mm = if (method == "Lainnya") custom.trim().ifBlank { "Lainnya" } else method
+                        Repo.markPaid(w.unpaid, true, mm, me)
+                        payFor = null
+                    },
+                ) { Text("Simpan lunas", fontWeight = FontWeight.ExtraBold) }
+            },
+            dismissButton = { TextButton(onClick = { payFor = null }) { Text("Batal") } },
+        )
     }
 }

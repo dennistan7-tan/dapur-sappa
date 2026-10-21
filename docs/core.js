@@ -242,6 +242,36 @@
       kemasan, kemasanCost, expenses, expCost, cost, profit: revenue - cost - expCost, costPerPax: pax > 0 ? cost / pax : 0,
     };
   };
+  // Laporan per customer untuk satu bulan: order, pax, omzet, profit (omzet - modal bahan/kemasan per porsi), status bayar per minggu.
+  C.customers = function (d, any) {
+    const prefix = C.firstOfMonth(any).substring(0, 7);
+    const cache = {}; const dayOf = (dt) => cache[dt] || (cache[dt] = C.day(d, dt));
+    const map = {};
+    d.orders.filter((o) => o.date.indexOf(prefix) === 0).forEach((o) => {
+      const key = o.customer.trim().toLowerCase();
+      const c = map[key] || (map[key] = { key, name: o.customer.trim(), orders: [], pax: 0, revenue: 0, cost: 0, weeks: {} });
+      const por = C.orderPortions(o); const rev = C.orderTotal(o);
+      c.orders.push(o); c.pax += por; c.revenue += rev; c.cost += por * dayOf(o.date).costPerPax;
+      const wk = C.mondayOf(o.date);
+      const w = c.weeks[wk] || (c.weeks[wk] = { week: wk, orders: [], revenue: 0, pax: 0, unpaid: [], methods: [] });
+      w.orders.push(o); w.revenue += rev; w.pax += por;
+      if (rev > 0) { if (!o.paid) w.unpaid.push(o); else if (o.pm && w.methods.indexOf(o.pm) < 0) w.methods.push(o.pm); }
+    });
+    const list = Object.keys(map).map((k) => {
+      const c = map[k];
+      c.profit = Math.round(c.revenue - c.cost);
+      c.weekList = Object.keys(c.weeks).sort().map((x) => c.weeks[x]);
+      c.weekList.forEach((w) => { w.paid = w.unpaid.length === 0; w.unpaidSum = w.unpaid.reduce((s, o) => s + C.orderTotal(o), 0); });
+      c.unpaidSum = c.weekList.reduce((s, w) => s + w.unpaidSum, 0);
+      c.allPaid = c.unpaidSum === 0;
+      return c;
+    }).sort((a, b) => b.revenue - a.revenue || (a.name < b.name ? -1 : 1));
+    const sum = (f) => list.reduce((s, c) => s + f(c), 0);
+    return {
+      list, customers: list.length, orders: sum((c) => c.orders.length), pax: sum((c) => c.pax), revenue: sum((c) => c.revenue),
+      profit: sum((c) => c.profit), unpaid: sum((c) => c.unpaidSum), paid: sum((c) => c.revenue) - sum((c) => c.unpaidSum),
+    };
+  };
   C.week = (d, monday) => { const r = []; for (let i = 0; i < 7; i++) r.push(C.day(d, C.addDays(monday, i))); return r; };
   C.month = function (d, any) {
     const first = C.firstOfMonth(any); const len = C.monthLen(first);

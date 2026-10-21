@@ -120,7 +120,7 @@ fun MainScreen(
                         { d -> route = Route.Detail(d) },
                     )
                     Tab.LAPORAN -> LaporanTab(
-                        data, repTab, { repTab = it }, repMonth, { repMonth = it.withDayOfMonth(1) },
+                        me, data, repTab, { repTab = it }, repMonth, { repMonth = it.withDayOfMonth(1) },
                         repWeek, { repWeek = it }, { d -> route = Route.Detail(d) },
                     )
                     Tab.LAINNYA -> MoreTab(

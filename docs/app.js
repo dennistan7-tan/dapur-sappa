@@ -232,7 +232,7 @@
     orders.forEach((o) => {
       const sub = (o.location ? o.location + ' · ' : '') + (o.only ? 'tanpa porsi' : o.pax + ' pax');
       h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><span>${o.time ? `<b class="acc tm">${esc(o.time)}</b> ` : ''}<b>${esc(o.customer)}</b></span><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
-        <div class="tags">${C.deliv(o) ? tag(C.deliv(o), 'ac') : ''}${o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''}${o.paid ? tag('Lunas', 'ok') : tag('Belum bayar', 'wr')}<span class="sp"></span><button class="link" data-a="togglepaid" data-v="${o.id}">${o.paid ? 'Tandai belum' : 'Tandai lunas'}</button></div></div>`;
+        <div class="tags">${C.deliv(o) ? tag(C.deliv(o), 'ac') : ''}${o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''}${o.paid ? tag('Lunas' + (o.pm ? ' · ' + o.pm : ''), 'ok') : tag('Belum bayar', 'wr')}<span class="sp"></span><button class="link" data-a="togglepaid" data-v="${o.id}">${o.paid ? 'Tandai belum' : 'Tandai lunas'}</button></div></div>`;
     });
     if (unpaid.length) h += `<div class="card warnbg"><div class="row"><b>Belum dibayar</b><b>${C.rp(unpaid.reduce((s, o) => s + C.orderTotal(o), 0))}</b></div><div class="mu">${unpaid.length} order belum lunas</div></div>`;
     return h;
@@ -323,7 +323,7 @@
     const rm = st.repMonth || (st.repMonth = C.firstOfMonth(today()));
     const rw = st.repWeek || (st.repWeek = C.mondayOf(today()));
     let h = '<button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
-    h += `<div class="chips">${chip('Harian', st.repTab === 0, 'reptab', 0)}${chip('Mingguan', st.repTab === 1, 'reptab', 1)}${chip('Bulanan', st.repTab === 2, 'reptab', 2)}</div>`;
+    h += `<div class="chips">${chip('Harian', st.repTab === 0, 'reptab', 0)}${chip('Mingguan', st.repTab === 1, 'reptab', 1)}${chip('Bulanan', st.repTab === 2, 'reptab', 2)}${chip('Customer', st.repTab === 3, 'reptab', 3)}</div>`;
     const monthNav = () => {
       const t = today(); const cur = rm.substring(0, 7) === t.substring(0, 7);
       return nav(C.monthName(rm), '1 – ' + (cur ? C.dayNum(t) : C.monthLen(rm)) + ' ' + C.monthAbbr(rm) + (cur ? ' (berjalan)' : ''), 'mprev', 'mnext');
@@ -339,6 +339,8 @@
       h += tile('Gross Profit minggu ini', C.rp(sum((d) => d.profit)), true, 't-money');
       h += `<div class="g4">${tile('Margin', C.pct(sum((d) => d.profit), sum((d) => d.revenue)), false, 't-money')}${tile('Omzet', C.rp(sum((d) => d.revenue)), false, 't-money')}${tile('Modal belanja', C.rp(sum((d) => d.cost)), false, 't-money')}${tile('Total pax', sum((d) => d.pax), false, 't-money')}</div>`;
       h += '<div class="g2">' + days.map(dayRow).join('') + '</div><p class="mu sm">Margin mingguan = gross profit ÷ omzet. Biaya bulanan tidak dihitung di laporan mingguan.</p>';
+    } else if (st.repTab === 3) {
+      h += monthNav() + vCustomer(rm);
     } else {
       const m = C.month(D(), rm); h += monthNav();
       const gross = m.profit + m.monthlyCost;
@@ -363,6 +365,40 @@
       if (st.f.unpaid) h += m.unpaid.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((o) => `<div class="row ln"><span>${esc(o.customer)} · ${C.dayShort(o.date)}</span><b>${C.rp(C.orderTotal(o))}</b></div>`).join('');
       h += '</div>';
     }
+    return h;
+  }
+
+  function vCustomer(rm) {
+    const r = C.customers(D(), rm); const pay = st.f.pay; st.f.cu = st.f.cu || {};
+    let h = tile('Total customer bulan ini', String(r.customers), true, 't-money');
+    h += `<div class="g4">${tile('Total order', r.orders, false, 't-money')}${tile('Total pax', r.pax, false, 't-money')}${tile('Omzet', C.rp(r.revenue), false, 't-money')}${tile('Profit gain', C.rp(r.profit), false, 't-money')}</div>`;
+    h += `<div class="g2">${tile('Profit rate', C.pct(r.profit, r.revenue), false, 't-money')}${tile('Belum lunas', C.rp(r.unpaid), false, 't-money')}</div>`;
+    h += '<h3>Per customer</h3>';
+    if (!r.list.length) h += '<p class="mu">Belum ada order di bulan ini.</p>';
+    r.list.forEach((c) => {
+      const open = !!st.f.cu[c.key];
+      h += `<div class="card ${c.allPaid ? 'paidcard' : ''}"><div class="row click" data-a="cuopen" data-v="${esc(c.key)}"><div><b>${open ? '▾' : '▸'} ${esc(c.name)}</b><div class="mu">${c.orders.length} order · ${c.pax} pax</div></div><div class="r"><b>${C.rp(c.revenue)}</b><div class="mu">Profit ${C.rp(c.profit)} · Rate ${C.pct(c.profit, c.revenue)}</div></div></div>`;
+      h += `<div class="cust-st">${c.allPaid ? '<span class="tag ok">Lunas semua</span>' : `<span class="mu">Belum lunas ${C.rp(c.unpaidSum)}</span>`}</div>`;
+      if (open) {
+        h += '<div class="sub">';
+        c.weekList.forEach((w) => {
+          const k = c.key + '|' + w.week; const act = pay && pay.k === k;
+          const days = w.orders.slice().sort((x, y) => (x.date < y.date ? -1 : 1)).map((o) => C.dayName(o.date).substring(0, 3) + ' ' + C.dayNum(o.date)).join(', ');
+          h += `<div class="wkpay ${w.paid ? 'paidrow' : ''}"><div class="row"><div><b>Week ${C.weekNo(w.week)}</b> <span class="mu">· ${w.orders.length} order · ${w.pax} pax</span><div class="mu sm">${esc(days)}</div></div><div class="r"><b>${C.rp(w.revenue)}</b><div>${w.paid ? tag('Lunas' + (w.methods.length ? ' · ' + (w.methods.length > 1 ? 'Campur' : w.methods[0]) : ''), 'ok') : '<span class="mu sm">Belum lunas</span>'}</div></div></div>`;
+          if (w.paid) h += `<button class="link" data-a="payundo" data-v="${esc(k)}">Batalkan lunas</button>`;
+          else if (!act) h += `<button class="btn" data-a="paystart" data-v="${esc(k)}">Tandai lunas ${C.rp(w.unpaidSum)}</button>`;
+          else {
+            h += `<div class="mu sm">Dibayar via:</div><div class="chips">${['Cash', 'Transfer', 'Lainnya'].map((m) => chip(m, pay.method === m, 'paymethod', m)).join('')}</div>`;
+            if (pay.method === 'Lainnya') h += `<input class="in" data-bind="pay.custom" placeholder="mis. QRIS, GoPay" value="${esc(pay.custom || '')}" autocomplete="off">`;
+            h += `<div class="row"><button class="btn o" data-a="paycancel">Batal</button><button class="btn" data-a="paysave">Simpan lunas</button></div>`;
+          }
+          h += '</div>';
+        });
+        h += '</div>';
+      }
+      h += '</div>';
+    });
+    h += '<p class="mu sm">Profit per customer = omzet dikurangi modal bahan dan kemasan per porsi di hari order. Pengeluaran lain dan biaya bulanan tidak dibagi ke customer. Rate = profit ÷ omzet.</p>';
     return h;
   }
 
@@ -566,7 +602,27 @@
     ordprev() { st.orderDate = C.addDays(st.orderDate, -1); render(); }, ordnext() { st.orderDate = C.addDays(st.orderDate, 1); render(); },
     neworder() { orderFormInit(null, st.orderDate); render(); },
     editorder(v) { const o = D().orders.find((x) => x.id === v); if (o) { orderFormInit(v, o.date); render(); } },
-    togglepaid(v) { const o = D().orders.find((x) => x.id === v); if (o) { saveOrder(Object.assign({}, o, { paid: !o.paid }), o, getMe()); keepRender(); } },
+    cuopen(v) { st.f.cu = st.f.cu || {}; st.f.cu[v] = !st.f.cu[v]; keepRender(); },
+    paystart(v) { st.f.pay = { k: v, method: '', custom: '' }; keepRender(); },
+    paymethod(v) { if (st.f.pay) st.f.pay.method = v; keepRender(); },
+    paycancel() { st.f.pay = null; keepRender(); },
+    paysave() {
+      const p = st.f.pay; if (!p || !p.method) return;
+      const method = p.method === 'Lainnya' ? ((p.custom || '').trim() || 'Lainnya') : p.method;
+      const i = p.k.lastIndexOf('|'); const key = p.k.substring(0, i), wk = p.k.substring(i + 1);
+      const list = D().orders.filter((o) => o.customer.trim().toLowerCase() === key && C.mondayOf(o.date) === wk && !o.paid && C.orderTotal(o) > 0);
+      list.forEach((o) => Store.put(Object.assign({}, o, { paid: true, pm: method })));
+      if (list.length) log(getMe(), 'Order', 'Lunas ' + list[0].customer + ' · Week ' + C.weekNo(wk), list.length + ' order · ' + C.rp(list.reduce((s, o) => s + C.orderTotal(o), 0)) + ' · via ' + method);
+      st.f.pay = null; keepRender();
+    },
+    payundo(v) {
+      const i = v.lastIndexOf('|'); const key = v.substring(0, i), wk = v.substring(i + 1);
+      const list = D().orders.filter((o) => o.customer.trim().toLowerCase() === key && C.mondayOf(o.date) === wk && o.paid && C.orderTotal(o) > 0);
+      list.forEach((o) => Store.put(Object.assign({}, o, { paid: false, pm: '' })));
+      if (list.length) log(getMe(), 'Order', 'Batal lunas ' + list[0].customer + ' · Week ' + C.weekNo(wk), list.length + ' order kembali Belum bayar');
+      keepRender();
+    },
+    togglepaid(v) { const o = D().orders.find((x) => x.id === v); if (o) { saveOrder(Object.assign({}, o, { paid: !o.paid, pm: o.paid ? '' : (o.pm || '') }), o, getMe()); keepRender(); } },
     ofonly(v) { st.f.of.only = v === '1'; keepRender(); },
     ofpaid(v) { st.f.of.paid = v === '1'; keepRender(); },
     ofdate(v) { const f = st.f.of; if (!v) return; f.date = v; f.days = [v]; keepRender(); },
@@ -597,7 +653,7 @@
       else if (!f.id && !f.days.length) f.err = 'Pilih minimal 1 hari kirim.';
       else {
         const old = f.id ? D().orders.find((o) => o.id === f.id) : null;
-        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: tstr, by: old ? old.by : me.idx, del: false });
+        const mk = (id, date) => ({ t: 'o', id, date, customer: f.customer.trim(), location: f.location.trim(), pax: f.only ? 0 : f.pax, remarks: f.remarks.trim(), price, extras: JSON.parse(JSON.stringify(f.extras)), paid: f.paid, only: f.only, slot: f.slot || '', time: tstr, pm: f.paid && old ? (old.pm || '') : '', by: old ? old.by : me.idx, del: false });
         if (f.id) { saveOrder(mk(f.id, f.date), old, me); st.orderDate = f.date; }
         else { const list = f.days.slice().sort().map((d) => mk(C.uuid(), d)); saveOrders(list, me); st.orderDate = list[0].date; }
         st.route = null; render(); return;
@@ -644,6 +700,7 @@
     if (el && el.getAttribute('data-num')) { val = digits(val); if (el.value !== val) el.value = val; }
     if (ns === 'of') st.f.of[k] = val;
     else if (ns === 'm') st.m[k] = val;
+    else if (ns === 'pay') { if (st.f.pay) st.f.pay[k] = val; }
     else if (ns === 'mn') { if (/^l\d+$/.test(k)) st.f.mn.lines[+k.substring(1)] = val; else st.f.mn[k] = val; }
     else if (ns === 'ku') { if (/^n\d+$/.test(k)) st.f.ku.users[+k.substring(1)].name = val; else st.f.ku[k] = val; }
     if (ns === 'of' && (k === 'price')) { /* total diperbarui saat render berikutnya */ }
