@@ -30,9 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -173,16 +176,37 @@ fun ChipScroll(content: @Composable RowScope.() -> Unit) {
 @Composable
 fun Stepper(value: Int, onChange: (Int) -> Unit, min: Int = 0) {
     val c = Sappa.c
+    var text by androidx.compose.runtime.remember(value) { androidx.compose.runtime.mutableStateOf(value.toString()) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         ArrowBtn("−") { if (value > min) onChange(value - 1) }
-        Text(
-            value.toString(),
-            modifier = Modifier.width(64.dp),
-            color = c.text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center,
+        androidx.compose.foundation.text.BasicTextField(
+            value = text,
+            onValueChange = { t ->
+                val d = t.filter { it.isDigit() }.take(4)
+                text = d
+                d.toIntOrNull()?.let { n -> if (n >= min) onChange(n) }
+            },
+            modifier = Modifier.width(84.dp)
+                .androidx_onBlur { if (text.isEmpty() || (text.toIntOrNull() ?: 0) < min) text = value.toString() },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = androidx.compose.ui.text.TextStyle(
+                color = c.text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center,
+            ),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(c.accent),
+            decorationBox = { inner ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    inner()
+                    Spacer(Modifier.fillMaxWidth().height(2.dp).background(c.accent))
+                }
+            },
         )
         ArrowBtn("+") { onChange(value + 1) }
     }
 }
+
+private fun Modifier.androidx_onBlur(f: () -> Unit): Modifier =
+    this.then(Modifier.onFocusChanged { if (!it.isFocused) f() })
 
 @Composable
 fun Rule() {

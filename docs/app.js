@@ -266,7 +266,7 @@
     h += `<div class="slots"><label class="fld"><span>Jam (0-23)</span><input class="in" style="width:90px" inputmode="numeric" maxlength="2" placeholder="16" data-bind="of.hh" data-num="1" value="${esc(f.hh)}"></label><b>:</b><label class="fld"><span>Menit (0-59)</span><input class="in" style="width:90px" inputmode="numeric" maxlength="2" placeholder="00" data-bind="of.mm" data-num="1" value="${esc(f.mm)}"></label></div>`;
     h += `<div class="mu">Jenis order</div><div class="chips">${chip('Porsi', !f.only, 'ofonly', '0')}${chip('Lauk saja', f.only, 'ofonly', '1')}</div>`;
     if (!f.only) {
-      h += `<div class="mu">Jumlah pax</div><div class="step"><button class="arr" data-a="ofpax" data-v="-1">−</button><b>${f.pax}</b><button class="arr" data-a="ofpax" data-v="1">+</button></div>`;
+      h += `<div class="mu">Jumlah pax</div><div class="step"><button class="arr" data-a="ofpax" data-v="-1">−</button><input class="paxin" type="number" inputmode="numeric" min="1" data-chg="ofpaxset" value="${f.pax}"><button class="arr" data-a="ofpax" data-v="1">+</button></div>`;
       h += field('Harga per porsi (Rp)', 'of.price', f.price, 'inputmode="numeric" data-num="1"');
       h += field('Charge ongkir (Rp)', 'of.ship', f.ship, 'inputmode="numeric" data-num="1" placeholder="0"');
     }
@@ -631,6 +631,7 @@
     ofpreset(v) { const f = st.f.of; const mon = C.mondayOf(f.date); f.days = []; for (let i = 0; i < +v; i++) f.days.push(C.addDays(mon, i)); f.date = f.days[0]; keepRender(); },
     ofslot(v) { const f = st.f.of; if (f.slot === v) { f.slot = ''; f.hh = ''; f.mm = ''; } else { f.slot = v; const t = C.slotTime(v).split(':'); f.hh = t[0]; f.mm = t[1]; } keepRender(); },
     wkopen(v) { st.f.wk = st.f.wk || {}; st.f.wk[v] = !st.f.wk[v]; keepRender(); },
+    ofpaxset(v) { const n = parseInt(v, 10); st.f.of.pax = n >= 1 ? Math.min(n, 9999) : 1; keepRender(); },
     ofpax(v) { st.f.of.pax = Math.max(1, st.f.of.pax + +v); keepRender(); },
     ofdelx(v) { st.f.of.extras.splice(+v, 1); keepRender(); },
     ofaddx() { st.m = { n: '', q: 1, p: '', c: '', err: '' }; extraModal(); },

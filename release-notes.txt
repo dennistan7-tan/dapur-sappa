@@ -1,2 +1,2 @@
-Dapur Sappa v0.4.9
-- Order baru: kolom Charge ongkir di bawah harga per porsi; ongkir ikut omzet dan profit
+Dapur Sappa v0.4.10
+- Order: jumlah pax bisa diketik langsung (tombol + dan - tetap ada)
