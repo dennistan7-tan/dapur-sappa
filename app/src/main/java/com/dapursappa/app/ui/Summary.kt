@@ -78,7 +78,7 @@ fun userName(data: AppData, idx: Int): String =
 fun DayCard(d: DayCalc, onClick: () -> Unit) {
     val c = Sappa.c
     val closed = d.libur && d.orders.isEmpty()
-    ClickCard(onClick = onClick, tone = Tone.Menu) {
+    ClickCard(onClick = onClick, tone = Tone.Menu, outline = d.date == java.time.LocalDate.now()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(Fmt.dayName(d.date) + " · " + Fmt.dayMon(d.date), color = c.accentText, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)

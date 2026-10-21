@@ -231,7 +231,7 @@
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
     orders.forEach((o) => {
       const sub = (o.location ? o.location + ' · ' : '') + (o.only ? 'tanpa porsi' : o.pax + ' pax');
-      h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><span>${o.time ? `<b class="acc tm">${esc(o.time)}</b> ` : ''}<b>${esc(o.customer)}</b></span><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="mu">${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="mu">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
+      h += `<div class="card t-order"><div class="row click" data-a="editorder" data-v="${o.id}"><span>${o.time ? `<b class="acc tm">${esc(o.time)}</b> ` : ''}<b>${esc(o.customer)}</b></span><b>${C.rp(C.orderTotal(o))}</b></div><div class="mu">${esc(sub)}</div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}
         <div class="tags">${C.deliv(o) ? tag(C.deliv(o), 'ac') : ''}${o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : ''}${o.paid ? tag('Lunas', 'ok') : tag('Belum bayar', 'wr')}<span class="sp"></span><button class="link" data-a="togglepaid" data-v="${o.id}">${o.paid ? 'Tandai belum' : 'Tandai lunas'}</button></div></div>`;
     });
     if (unpaid.length) h += `<div class="card warnbg"><div class="row"><b>Belum dibayar</b><b>${C.rp(unpaid.reduce((s, o) => s + C.orderTotal(o), 0))}</b></div><div class="mu">${unpaid.length} order belum lunas</div></div>`;
@@ -286,7 +286,7 @@
     const closed = d.libur && !d.orders.length;
     const ml = C.menuLines(d.menuName);
     const menuHtml = ml.length ? ml.map((x) => `<div class="mn">${esc(x)}</div>`).join('') : `<div class="mn none">${closed ? 'Libur' : 'Menu belum diisi'}</div>${closed ? '<div class="mu sm">Bisa dibuka untuk PO spesial</div>' : ''}`;
-    return `<div class="card click t-menu" data-a="detail" data-v="${d.date}"><div class="row start"><div><div class="dt2">${C.dayName(d.date)} · ${C.dm(d.date)}</div>${menuHtml}</div>${closed ? tag('Libur') : tag(d.pax + ' pax', d.pax ? 'ac' : '')}</div>${d.orders.length || d.cost > 0 ? `<div class="row"><span class="mu">Modal ${C.rp(d.cost)}</span><b class="${d.profit >= 0 ? 'okc' : 'acc'}">Profit ${C.rp(d.profit)}</b></div>` : (closed ? '' : '<div class="mu">Belum ada order</div>')}</div>`;
+    return `<div class="card click t-menu${d.date === today() ? ' today' : ''}" data-a="detail" data-v="${d.date}"><div class="row start"><div><div class="dt2">${C.dayName(d.date)} · ${C.dm(d.date)}</div>${menuHtml}</div>${closed ? tag('Libur') : tag(d.pax + ' pax', d.pax ? 'ac' : '')}</div>${d.orders.length || d.cost > 0 ? `<div class="row"><span class="mu">Modal ${C.rp(d.cost)}</span><b class="${d.profit >= 0 ? 'okc' : 'acc'}">Profit ${C.rp(d.profit)}</b></div>` : (closed ? '' : '<div class="mu">Belum ada order</div>')}</div>`;
   }
   function vSummary(me) {
     const ws = st.weekStart || (st.weekStart = C.mondayOf(today()));

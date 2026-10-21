@@ -81,9 +81,9 @@ fun OrderTab(
                 }
                 val sub = (if (o.location.isBlank()) "" else o.location + " · ") + (if (o.onlyExtra) "tanpa porsi" else "${o.pax} pax")
                 Muted(sub)
-                if (o.remarks.isNotBlank()) Muted(o.remarks, modifier = Modifier.padding(top = 2.dp))
+                if (o.remarks.isNotBlank()) NoteHighlight("Catatan: " + o.remarks, Modifier.padding(top = 6.dp))
                 for (e in o.extras) {
-                    Muted("Tambahan: ${e.name} ${e.qty} × ${Fmt.rp(e.unitPrice)}", modifier = Modifier.padding(top = 2.dp))
+                    NoteHighlight("Tambahan: ${e.name} ${e.qty} × ${Fmt.rp(e.unitPrice)}", Modifier.padding(top = 6.dp))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

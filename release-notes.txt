@@ -1,5 +1,3 @@
-Dapur Sappa v0.4.5
-- Perbaiki kartu order yang membesar (tag dan tombol Tandai lunas)
-- Titik hijau online pindah ke kanan atas huruf a
-- Menu Belanja langsung fokus ke kolom isi belanja
-- Kotak menu hari ini: tanggal di samping judul, tanggal di bawah Order dihapus
+Dapur Sappa v0.4.6
+- Order: catatan (remarks) dan tambahan disorot, font lebih besar dan warna menyala
+- Summary: kartu hari ini diberi garis tepi tebal

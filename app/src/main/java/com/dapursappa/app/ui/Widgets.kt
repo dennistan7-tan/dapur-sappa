@@ -189,10 +189,11 @@ fun Rule() {
 }
 
 @Composable
-fun ClickCard(onClick: () -> Unit, tone: Tone = Tone.Neutral, content: @Composable () -> Unit) {
+fun ClickCard(onClick: () -> Unit, tone: Tone = Tone.Neutral, outline: Boolean = false, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(toneBg(tone)).border(1.dp, toneLine(tone), shape).clickable(onClick = onClick)
+        Modifier.fillMaxWidth().clip(shape).background(toneBg(tone))
+            .border(if (outline) 3.dp else 1.dp, if (outline) Sappa.c.accent else toneLine(tone), shape).clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) { content() }
 }
@@ -237,4 +238,16 @@ fun MenuBox(data: com.dapursappa.app.data.AppData, date: LocalDate, label: Strin
         if (lines.isEmpty()) Text(if (libur) "Libur" else "Menu belum diisi", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
         for (ln in lines) Text(ln.uppercase(), color = c.text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 22.sp)
     }
+}
+
+/** Catatan penting di kartu order (remarks / tambahan): font lebih besar dengan latar menyala. */
+@Composable
+fun NoteHighlight(text: String, modifier: Modifier = Modifier) {
+    val c = Sappa.c
+    Text(
+        text,
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.warnSoft)
+            .border(1.5.dp, c.warn, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 6.dp),
+        color = c.warn, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 21.sp,
+    )
 }
