@@ -1,2 +1,3 @@
-Dapur Sappa v0.4.10
-- Order: jumlah pax bisa diketik langsung (tombol + dan - tetap ada)
+Dapur Sappa v0.4.11
+- Summary: stok sisa kemasan (kanan Gross Profit), terpotong 1 pcs per porsi
+- Belanja kemasan: pilih Stok bulanan atau Harian (spesial); hari spesial hanya hitung kemasan spesial

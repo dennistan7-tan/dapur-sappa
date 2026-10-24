@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -63,11 +65,38 @@ fun SummaryTab(
             StatTile("Total pax", pax.toString(), Modifier.weight(1f))
             StatTile("Omzet", Fmt.rp(omzet), Modifier.weight(1f))
         }
-        StatTile("Gross Profit", Fmt.rp(profit), Modifier.fillMaxWidth(), highlight = true)
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile("Gross Profit", Fmt.rp(profit), Modifier.weight(1f).fillMaxHeight(), highlight = true)
+            KemasanStockTile(Calc.kemasanStock(data, LocalDate.now()), Modifier.weight(1f).fillMaxHeight())
+        }
 
         SectionTitle("Menu minggu ini")
         for (d in days) DayCard(d, onClick = { onDay(d.date) })
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun KemasanStockTile(stock: List<com.dapursappa.app.data.KemasanStock>, modifier: Modifier = Modifier) {
+    val c = Sappa.c
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+    Column(
+        modifier.clip(shape).background(toneBg(Tone.Shop)).border(1.dp, toneLine(Tone.Shop), shape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text("Stok kemasan", color = c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        if (stock.isEmpty()) {
+            Text("Belum ada", color = c.text2, fontSize = 13.sp)
+        } else for (s in stock) {
+            val left = Math.round(s.left).toInt()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(s.name, Modifier.weight(1f), color = c.text, fontSize = 13.sp, maxLines = 1)
+                Text(
+                    "$left ${s.unit}",
+                    color = if (left <= 10) c.accentText else c.text, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold,
+                )
+            }
+        }
     }
 }
 

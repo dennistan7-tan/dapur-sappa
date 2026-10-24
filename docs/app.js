@@ -180,7 +180,8 @@
     items.forEach((p) => {
       let sub = (C.num(p.qty) + ' ' + p.unit).trim();
       if (p.kind === 'KEMASAN' && p.qty > 0) sub += ' · ' + C.rp(Math.round(p.price / p.qty)) + ' per ' + (p.unit || 'pcs');
-      if (p.kind === 'BAHAN' && (p.useDate || p.date) !== p.date) sub += ' · untuk ' + C.dayName(p.useDate);
+      if (p.kind === 'KEMASAN' && p.daily) sub += ' · spesial harian';
+      if ((p.kind === 'BAHAN' || p.daily) && (p.useDate || p.date) !== p.date) sub += ' · untuk ' + C.dayName(p.useDate);
       h += `<div class="card t-shop row click" data-a="editpur" data-v="${p.id}"><div><b>${esc(p.name)}</b><div class="mu">${esc(sub)}</div></div><div class="r"><b>${C.rp(p.price)}</b><br>${kindTag(p.kind)}</div></div>`;
     });
     exps.forEach((e) => {
@@ -197,13 +198,17 @@
     if (!p.ok) { box.innerHTML = `<p class="warn">${p.price <= 0 ? 'Harga belum terbaca. Tulis harga seperti 36rb atau 36000.' : 'Nama barang belum terbaca.'}</p><button class="btn o" data-a="belmanual">Isi manual</button>`; return; }
     const kind = st.f.bKind || p.kind;
     const use = st.f.bUse || vd;
+    const daily = kind === 'KEMASAN' && st.f.bDaily === 'D';
     const per = p.qty > 0 ? Math.round(p.price / p.qty) : p.price;
     const perTxt = p.unit === 'kg' ? 'Rp' + C.num(p.price / (p.qty * 1000)) + ' per gram' : C.rp(per) + ' per ' + (p.unit || 'satuan');
     let h = kind === 'LAIN'
       ? `<div class="prev"><small class="okc">Terbaca otomatis</small><b>${esc(p.name)} · ${C.rp(p.price)}</b><div class="mu">Pengeluaran lain (bensin, tambal ban, dll)</div></div>`
       : `<div class="prev"><small class="okc">Terbaca otomatis</small><b>${esc(p.name)} · ${esc((C.num(p.qty) + ' ' + p.unit).trim())} · ${C.rp(p.price)}</b><div class="mu">Jenis: ${esc(kindLabel(kind).toLowerCase())} · ${esc(perTxt)}</div></div>`;
     h += '<div class="mu">Jenis</div><div class="chips">' + ['BAHAN', 'KEMASAN', 'BULANAN', 'LAIN'].map((k) => chip(kindLabel(k), kind === k, 'belkind', k)).join('') + '</div>';
-    if (kind === 'BAHAN') {
+    if (kind === 'KEMASAN') {
+      h += `<div class="mu">Charge ke</div><div class="chips">${chip('Stok bulanan', !daily, 'beldaily', 'S')}${chip('Harian (spesial)', daily, 'beldaily', 'D')}</div><p class="mu sm">${daily ? 'Biaya masuk ke hari yang dipilih. Kemasan stok bulanan tidak dihitung di hari itu.' : 'Masuk stok kemasan, terpotong 1 pcs per porsi.'}</p>`;
+    }
+    if (kind === 'BAHAN' || daily) {
       h += `<div class="mu">Dipakai untuk tanggal</div><div class="chips">${chip('Hari ini', use === vd, 'beluse', vd)}${chip('Besok', use === C.addDays(vd, 1), 'beluse', C.addDays(vd, 1))}<input type="date" class="in dt" value="${use}" data-chg="beluse"></div>`;
     }
     if (kind === 'LAIN') {
@@ -214,7 +219,8 @@
     box.innerHTML = h;
   }
   function draftPurchase(p, kind, vd, use, me) {
-    return { t: 'p', id: C.uuid(), date: vd, useDate: kind === 'BAHAN' ? use : vd, raw: st.f.belText || '', name: p.name, qty: p.qty, unit: p.unit, price: p.price, kind, by: me.idx, del: false };
+    const daily = kind === 'KEMASAN' && st.f.bDaily === 'D';
+    return { t: 'p', id: C.uuid(), date: vd, useDate: (kind === 'BAHAN' || daily) ? use : vd, daily, raw: st.f.belText || '', name: p.name, qty: p.qty, unit: p.unit, price: p.price, kind, by: me.idx, del: false };
   }
 
   // ---------- Order ----------
@@ -295,7 +301,8 @@
     const end = C.addDays(ws, 6);
     let h = nav('Summary Week ' + C.weekNo(ws), C.range(ws, end), 'wkprev', 'wknext');
     h += `<div class="g2">${tile('Total pax', sum((d) => d.pax), false, 't-money')}${tile('Omzet', C.rp(sum((d) => d.revenue)), false, 't-money')}</div>`;
-    h += tile('Gross Profit', C.rp(sum((d) => d.profit)), true, 't-money');
+    const stock = C.kemasanStock(D(), today());
+    h += `<div class="g2s">${tile('Gross Profit', C.rp(sum((d) => d.profit)), true, 't-money')}<div class="tile t-shop stk"><small>Stok kemasan</small>${stock.length ? stock.map((s) => { const l = Math.round(s.left); return `<div class="row"><span>${esc(s.name)}</span><b class="${l <= 10 ? 'acc' : ''}">${l} ${esc(s.unit)}</b></div>`; }).join('') : '<span class="mu">Belum ada</span>'}</div></div>`;
     h += '<h3>Menu minggu ini</h3><div class="g2">' + days.map(dayCard).join('') + '</div>';
     return h;
   }
@@ -479,7 +486,8 @@
     const m = st.m; const kinds = m.isNew ? ['BAHAN', 'KEMASAN', 'BULANAN', 'LAIN'] : ['BAHAN', 'KEMASAN', 'BULANAN'];
     openModal(`<h3>${m.isNew ? 'Ubah sebelum simpan' : 'Edit belanja'}</h3>${field('Nama barang', 'm.name', m.name)}<div class="two">${field('Jumlah', 'm.qty', m.qty)}${field('Satuan', 'm.unit', m.unit)}</div>${field('Harga total (Rp)', 'm.price', m.price, 'inputmode="numeric" data-num="1"')}
       <div class="mu">Jenis</div><div class="chips">${kinds.map((k) => chip(kindLabel(k), m.kind === k, 'mkind', k)).join('')}</div>
-      ${m.kind === 'BAHAN' ? `<label class="fld"><span>Dipakai untuk tanggal</span><input type="date" class="in" data-bind="m.use" value="${m.use}"></label>` : ''}
+      ${m.kind === 'KEMASAN' ? `<div class="mu">Charge ke</div><div class="chips">${chip('Stok bulanan', !m.daily, 'mdaily', 'S')}${chip('Harian (spesial)', !!m.daily, 'mdaily', 'D')}</div>` : ''}
+      ${(m.kind === 'BAHAN' || (m.kind === 'KEMASAN' && m.daily)) ? `<label class="fld"><span>Dipakai untuk tanggal</span><input type="date" class="in" data-bind="m.use" value="${m.use}"></label>` : ''}
       ${m.kind === 'LAIN' ? `<div class="mu">Charge ke</div><div class="chips">${chip('Profit Harian', m.charge !== 'M', 'mcharge', 'D')}${chip('Profit Bulanan', m.charge === 'M', 'mcharge', 'M')}</div>` : ''}
       ${m.err ? `<p class="err">${esc(m.err)}</p>` : ''}<div class="btns"><button class="btn" data-a="msave">Simpan</button>${m.isNew ? '' : '<button class="btn o" data-a="mdel">Hapus</button>'}<button class="btn o" data-a="mcancel">Batal</button></div>`);
   }
@@ -564,12 +572,14 @@
     belprev() { st.belDate = C.addDays(st.belDate, -1); render(); }, belnext() { st.belDate = C.addDays(st.belDate, 1); render(); },
     belkind(v) { st.f.bKind = v; belPreview(); },
     belcharge(v) { st.f.bCharge = v; belPreview(); },
+    beldaily(v) { st.f.bDaily = v; belPreview(); },
+    mdaily(v) { st.m.daily = v === 'D'; purModal(); },
     mcharge(v) { st.m.charge = v; purModal(); },
     beluse(v, el) { st.f.bUse = (el && el.value) || v; belPreview(); },
     belmanual() {
       const me = getMe(); const p = C.parse((st.f.belText || '')) || { name: '', qty: 1, unit: '', price: 0, kind: 'BAHAN' }; const vd = st.belDate;
       const kind = st.f.bKind || p.kind;
-      st.m = { isNew: true, old: null, id: C.uuid(), date: vd, name: p.name, qty: C.num(p.qty), unit: p.unit, price: String(p.price || ''), kind, use: st.f.bUse || vd, raw: st.f.belText || '', charge: st.f.bCharge || 'D', err: '' };
+      st.m = { isNew: true, old: null, id: C.uuid(), date: vd, name: p.name, qty: C.num(p.qty), unit: p.unit, price: String(p.price || ''), kind, use: st.f.bUse || vd, daily: kind === 'KEMASAN' && st.f.bDaily === 'D', raw: st.f.belText || '', charge: st.f.bCharge || 'D', err: '' };
       purModal();
     },
     belsave() {
@@ -577,11 +587,11 @@
       const vd = st.belDate; const kind = st.f.bKind || p.kind;
       if (kind === 'LAIN') saveExpense({ t: 'e', id: C.uuid(), date: vd, name: p.name, amount: p.price, monthly: st.f.bCharge === 'M', by: me.idx, del: false }, me);
       else savePurchase(draftPurchase(p, kind, vd, st.f.bUse || vd, me), null, me);
-      st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bCharge = null; keepRender();
+      st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bCharge = null; st.f.bDaily = null; keepRender();
     },
     editpur(v) {
       const p = D().purchases.find((x) => x.id === v); if (!p) return;
-      st.m = { isNew: false, old: p, id: p.id, date: p.date, name: p.name, qty: C.num(p.qty), unit: p.unit, price: String(p.price), kind: p.kind, use: p.useDate || p.date, raw: p.raw, err: '' };
+      st.m = { isNew: false, old: p, id: p.id, date: p.date, name: p.name, qty: C.num(p.qty), unit: p.unit, price: String(p.price), kind: p.kind, use: p.useDate || p.date, daily: !!p.daily, raw: p.raw, err: '' };
       purModal();
     },
     mkind(v) { st.m.kind = v; purModal(); },
@@ -592,9 +602,10 @@
         saveExpense({ t: 'e', id: m.id, date: m.date, name: m.name.trim(), amount: price, monthly: m.charge === 'M', by: me.idx, del: false }, me);
         st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bCharge = null; closeModal(); keepRender(); return;
       }
-      const rec = { t: 'p', id: m.id, date: m.date, useDate: m.kind === 'BAHAN' ? m.use : m.date, raw: m.raw || '', name: m.name.trim(), qty: parseFloat(String(m.qty).replace(',', '.')) || 1, unit: (m.unit || '').trim(), price, kind: m.kind, by: m.old ? m.old.by : me.idx, del: false };
+      const daily = m.kind === 'KEMASAN' && !!m.daily;
+      const rec = { t: 'p', id: m.id, date: m.date, useDate: (m.kind === 'BAHAN' || daily) ? m.use : m.date, daily, raw: m.raw || '', name: m.name.trim(), qty: parseFloat(String(m.qty).replace(',', '.')) || 1, unit: (m.unit || '').trim(), price, kind: m.kind, by: m.old ? m.old.by : me.idx, del: false };
       savePurchase(rec, m.old, me);
-      if (m.isNew) { st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; }
+      if (m.isNew) { st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bDaily = null; }
       closeModal(); keepRender();
     },
     mdel() { deletePurchase(st.m.old, getMe()); closeModal(); keepRender(); },

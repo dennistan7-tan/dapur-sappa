@@ -61,6 +61,7 @@ fun BelanjaTab(me: Me, data: AppData) {
     var kindOverride by remember { mutableStateOf<Kind?>(null) }
     var useDate by remember { mutableStateOf(today) }
     var chargeMonthly by remember { mutableStateOf(false) }
+    var kemDaily by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<Purchase?>(null) }
     var dialogNew by remember { mutableStateOf(false) }
@@ -73,6 +74,7 @@ fun BelanjaTab(me: Me, data: AppData) {
     }
     val parsed = remember(text) { Parser.parse(text) }
     val kind = kindOverride ?: parsed?.kind ?: Kind.BAHAN
+    val usesDate = kind == Kind.BAHAN || (kind == Kind.KEMASAN && kemDaily)
     val items = data.purchases.filter { it.date == viewDate.toString() }
     val exps = data.expenses.filter { it.date == viewDate.toString() }
     val forToday = items.filter { it.kind != Kind.BULANAN && it.useDate == it.date }.sumOf { it.price }
@@ -80,12 +82,12 @@ fun BelanjaTab(me: Me, data: AppData) {
     val monthly = items.filter { it.kind == Kind.BULANAN }.sumOf { it.price }
     val expSum = exps.sumOf { it.amount }
 
-    fun reset() { text = ""; kindOverride = null; useDate = today; chargeMonthly = false }
+    fun reset() { text = ""; kindOverride = null; useDate = today; chargeMonthly = false; kemDaily = false }
     fun saveParsed(p: Parsed) {
         if (kind == Kind.LAIN) {
             Repo.saveExpense(Expense(Store.newId(), viewDate.toString(), p.name, p.price, chargeMonthly, me.idx), me)
         } else {
-            Repo.savePurchase(draftFrom(p, text, kind, viewDate, if (kind == Kind.BAHAN) useDate else viewDate, me), null, me)
+            Repo.savePurchase(draftFrom(p, text, kind, viewDate, if (usesDate) useDate else viewDate, me, kind == Kind.KEMASAN && kemDaily), null, me)
         }
         reset()
     }
@@ -114,7 +116,18 @@ fun BelanjaTab(me: Me, data: AppData) {
                     ChipScroll {
                         Kind.values().forEach { k -> Chip(k.label, kind == k) { kindOverride = k } }
                     }
-                    if (kind == Kind.BAHAN) {
+                    if (kind == Kind.KEMASAN) {
+                        Spacer(Modifier.height(10.dp))
+                        Muted("Charge ke")
+                        Spacer(Modifier.height(4.dp))
+                        ChipScroll {
+                            Chip("Stok bulanan", !kemDaily) { kemDaily = false }
+                            Chip("Harian (spesial)", kemDaily) { kemDaily = true }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Muted(if (kemDaily) "Biaya masuk ke hari yang dipilih. Kemasan stok bulanan tidak dihitung di hari itu." else "Masuk stok kemasan, terpotong 1 pcs per porsi.")
+                    }
+                    if (usesDate) {
                         Spacer(Modifier.height(10.dp))
                         Muted("Dipakai untuk tanggal")
                         Spacer(Modifier.height(4.dp))
@@ -142,7 +155,7 @@ fun BelanjaTab(me: Me, data: AppData) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlineButton("Ubah", Modifier.weight(1f)) {
                             dialogNew = true
-                            dialog = draftFrom(parsed, text, kind, viewDate, if (kind == Kind.BAHAN) useDate else viewDate, me)
+                            dialog = draftFrom(parsed, text, kind, viewDate, if (usesDate) useDate else viewDate, me, kind == Kind.KEMASAN && kemDaily)
                         }
                         PrimaryButton("Simpan", Modifier.weight(1f)) { saveParsed(parsed) }
                     }
@@ -248,7 +261,8 @@ fun purchaseSub(p: Purchase): String {
     val parts = ArrayList<String>()
     parts.add((Fmt.num(p.qty) + " " + p.unit).trim())
     if (p.kind == Kind.KEMASAN && p.qty > 0) parts.add(Fmt.rp(Math.round(p.price / p.qty)) + " per " + p.unit.ifBlank { "pcs" })
-    if (p.kind == Kind.BAHAN && p.useDate != p.date) {
+    if (p.kind == Kind.KEMASAN && p.daily) parts.add("spesial harian")
+    if ((p.kind == Kind.BAHAN || p.daily) && p.useDate != p.date) {
         parts.add("untuk " + Fmt.dayName(LocalDate.parse(p.useDate)))
     }
     return parts.joinToString(" · ")
@@ -265,9 +279,9 @@ fun kindTag(k: Kind) {
     }
 }
 
-fun draftFrom(p: Parsed, raw: String, kind: Kind, date: LocalDate, use: LocalDate, me: Me) = Purchase(
+fun draftFrom(p: Parsed, raw: String, kind: Kind, date: LocalDate, use: LocalDate, me: Me, daily: Boolean = false) = Purchase(
     id = Store.newId(), date = date.toString(), useDate = use.toString(), raw = raw,
-    name = p.name, qty = p.qty, unit = p.unit, price = p.price, kind = kind, by = me.idx,
+    name = p.name, qty = p.qty, unit = p.unit, price = p.price, kind = kind, by = me.idx, daily = daily,
 )
 
 @Composable
@@ -306,6 +320,7 @@ fun PurchaseDialog(
     var kind by remember { mutableStateOf(init.kind) }
     var use by remember { mutableStateOf(LocalDate.parse(init.useDate)) }
     var charge by remember { mutableStateOf(false) }
+    var daily by remember { mutableStateOf(init.daily) }
     var pick by remember { mutableStateOf(false) }
     val base = LocalDate.parse(init.date)
 
@@ -330,7 +345,14 @@ fun PurchaseDialog(
                         Chip("Profit Bulanan", charge) { charge = true }
                     }
                 }
-                if (kind == Kind.BAHAN) {
+                if (kind == Kind.KEMASAN) {
+                    Muted("Charge ke")
+                    ChipScroll {
+                        Chip("Stok bulanan", !daily) { daily = false }
+                        Chip("Harian (spesial)", daily) { daily = true }
+                    }
+                }
+                if (kind == Kind.BAHAN || (kind == Kind.KEMASAN && daily)) {
                     Muted("Dipakai untuk tanggal")
                     ChipScroll {
                         Chip("Hari beli", use == base) { use = base }
@@ -347,7 +369,7 @@ fun PurchaseDialog(
                     onSaveExpense(name.trim(), pr, charge)
                 } else if (name.isNotBlank() && pr > 0) {
                     val q = qty.replace(',', '.').toDoubleOrNull() ?: 1.0
-                    onSave(init.copy(name = name.trim(), qty = q, unit = unit.trim(), price = pr, kind = kind, useDate = if (kind == Kind.BAHAN) use.toString() else init.date))
+                    onSave(init.copy(name = name.trim(), qty = q, unit = unit.trim(), price = pr, kind = kind, useDate = if (kind == Kind.BAHAN || (kind == Kind.KEMASAN && daily)) use.toString() else init.date, daily = kind == Kind.KEMASAN && daily))
                 }
             }) { Text("Simpan", color = c.accentText, fontWeight = FontWeight.ExtraBold) }
         },

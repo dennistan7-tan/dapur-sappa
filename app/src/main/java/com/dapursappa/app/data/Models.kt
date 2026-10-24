@@ -30,11 +30,12 @@ data class Purchase(
     val kind: Kind,
     val by: Int,
     val deleted: Boolean = false,
+    val daily: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("t", "p").put("id", id).put("date", date).put("useDate", useDate)
         .put("raw", raw).put("name", name).put("qty", qty).put("unit", unit)
-        .put("price", price).put("kind", kind.name).put("by", by).put("del", deleted)
+        .put("price", price).put("kind", kind.name).put("by", by).put("del", deleted).put("daily", daily)
 
     companion object {
         fun from(j: JSONObject): Purchase {
@@ -42,7 +43,7 @@ data class Purchase(
             return Purchase(
                 j.getString("id"), j.optString("date"), j.optString("useDate", j.optString("date")),
                 j.optString("raw"), j.optString("name"), j.optDouble("qty", 1.0), j.optString("unit"),
-                j.optLong("price"), kind, j.optInt("by", -1), j.optBoolean("del"),
+                j.optLong("price"), kind, j.optInt("by", -1), j.optBoolean("del"), j.optBoolean("daily"),
             )
         }
     }

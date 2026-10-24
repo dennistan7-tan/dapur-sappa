@@ -215,6 +215,20 @@
     const ks = Object.keys(d.menus).sort(); return ks.length ? d.menus[ks[ks.length - 1]].price : 20000;
   };
 
+  // Stok sisa kemasan bulanan sampai hari ini (1 pcs per porsi); kemasan spesial harian tidak ikut.
+  C.kemasanStock = function (d, today) {
+    const skip = {}; d.purchases.forEach((p) => { if (p.kind === 'KEMASAN' && p.daily) skip[p.useDate || p.date] = 1; });
+    const pax = {}; d.orders.forEach((o) => { if (o.date <= today && !skip[o.date]) pax[o.date] = (pax[o.date] || 0) + C.orderPortions(o); });
+    const groups = {};
+    d.purchases.forEach((p) => { if (p.kind === 'KEMASAN' && !p.daily && p.qty > 0) { const k = p.name.toLowerCase().trim(); (groups[k] = groups[k] || []).push(p); } });
+    return Object.keys(groups).sort().map((k) => {
+      const l = groups[k]; const first = l.reduce((m, p) => (p.date < m ? p.date : m), l[0].date); const latest = l.reduce((m, p) => (p.date > m.date ? p : m), l[0]);
+      let used = 0; Object.keys(pax).forEach((dt) => { if (dt >= first) used += pax[dt]; });
+      const bought = l.reduce((s, p) => s + (+p.qty || 0), 0);
+      return { name: latest.name, unit: latest.unit || 'pcs', bought, used, left: bought - used };
+    });
+  };
+
   C.day = function (d, date) {
     const orders = d.orders.filter((o) => o.date === date).sort((a, b) => { const x = C.orderKey(a) + a.customer.toLowerCase(), y = C.orderKey(b) + b.customer.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
     const pax = orders.reduce((s, o) => s + C.orderPortions(o), 0);
@@ -222,9 +236,12 @@
     const bahan = d.purchases.filter((p) => p.kind === 'BAHAN' && (p.useDate || p.date) === date);
     const bahanCost = bahan.reduce((s, p) => s + p.price, 0);
     const kemasan = [];
-    if (pax > 0) {
+    const special = d.purchases.filter((p) => p.kind === 'KEMASAN' && p.daily && (p.useDate || p.date) === date);
+    if (special.length) {
+      special.forEach((p) => kemasan.push({ name: p.name, unitPrice: p.qty > 0 ? p.price / p.qty : p.price, pcs: Math.trunc(p.qty) || 0, cost: p.price }));
+    } else if (pax > 0) {
       const groups = {};
-      d.purchases.filter((p) => p.kind === 'KEMASAN' && p.qty > 0 && p.date <= date).forEach((p) => {
+      d.purchases.filter((p) => p.kind === 'KEMASAN' && !p.daily && p.qty > 0 && p.date <= date).forEach((p) => {
         const k = p.name.toLowerCase().trim();
         if (!groups[k] || p.date > groups[k].date) groups[k] = p;
       });

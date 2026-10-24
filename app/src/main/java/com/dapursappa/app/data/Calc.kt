@@ -4,6 +4,11 @@ import java.time.LocalDate
 
 data class KemasanLine(val name: String, val unitPrice: Double, val pcs: Int, val cost: Long)
 
+/** Stok kemasan stok (bulanan): dibeli - terpakai (1 pcs per porsi). Kemasan spesial harian tidak ikut. */
+data class KemasanStock(val name: String, val unit: String, val bought: Double, val used: Double) {
+    val left: Double get() = bought - used
+}
+
 data class DayCalc(
     val date: LocalDate,
     val menuName: String,
@@ -116,8 +121,12 @@ object Calc {
         val bahanCost = bahan.sumOf { it.price }
 
         val kemasan = ArrayList<KemasanLine>()
-        if (pax > 0) {
-            val groups = d.purchases.filter { it.kind == Kind.KEMASAN && it.qty > 0 && it.date <= ds }
+        val special = d.purchases.filter { it.kind == Kind.KEMASAN && it.daily && it.useDate == ds }
+        if (special.isNotEmpty()) {
+            // Hari dengan kemasan spesial: hanya kemasan spesial yang dihitung, stok bulanan tidak terpotong.
+            for (p in special) kemasan.add(KemasanLine(p.name, if (p.qty > 0) p.price / p.qty else p.price.toDouble(), p.qty.toInt(), p.price))
+        } else if (pax > 0) {
+            val groups = d.purchases.filter { it.kind == Kind.KEMASAN && !it.daily && it.qty > 0 && it.date <= ds }
                 .groupBy { it.name.lowercase().trim() }
             for ((_, list) in groups) {
                 val latest = list.maxByOrNull { it.date } ?: continue
@@ -131,6 +140,20 @@ object Calc {
             date, menuRaw(d, date), isLibur(d, date), orders, pax, revenue,
             bahan, bahanCost, kemasan, kemasanCost, exps, exps.sumOf { it.amount },
         )
+    }
+
+    /** Stok sisa kemasan bulanan sampai hari ini. */
+    fun kemasanStock(d: AppData, today: LocalDate): List<KemasanStock> {
+        val ts = today.toString()
+        val skip = d.purchases.filter { it.kind == Kind.KEMASAN && it.daily }.map { it.useDate }.toSet()
+        val paxByDate = d.orders.filter { it.date <= ts && it.date !in skip }.groupBy { it.date }.mapValues { e -> e.value.sumOf { it.portions } }
+        val groups = d.purchases.filter { it.kind == Kind.KEMASAN && !it.daily && it.qty > 0 }.groupBy { it.name.lowercase().trim() }
+        return groups.values.map { list ->
+            val first = list.minOf { it.date }
+            val latest = list.maxByOrNull { it.date }!!
+            val used = paxByDate.filter { it.key >= first }.values.sum()
+            KemasanStock(latest.name, latest.unit.ifBlank { "pcs" }, list.sumOf { it.qty }, used.toDouble())
+        }.sortedBy { it.name.lowercase() }
     }
 
     fun week(d: AppData, monday: LocalDate): List<DayCalc> = List(7) { day(d, monday.plusDays(it.toLong())) }

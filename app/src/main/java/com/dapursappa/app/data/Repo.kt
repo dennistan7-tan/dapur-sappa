@@ -19,6 +19,7 @@ object Repo {
             if (old.qty != p.qty || old.unit != p.unit) ch.add("Jumlah ${Fmt.num(old.qty)} ${old.unit} → ${Fmt.num(p.qty)} ${p.unit}")
             if (old.kind != p.kind) ch.add("Jenis ${old.kind.label} → ${p.kind.label}")
             if (old.useDate != p.useDate) ch.add("Untuk tanggal ${old.useDate} → ${p.useDate}")
+            if (old.daily != p.daily) ch.add(if (p.daily) "Kemasan jadi spesial harian" else "Kemasan jadi stok bulanan")
             if (ch.isNotEmpty()) log(me, "Belanja", "Edit belanja: ${p.name}", ch.joinToString("\n"))
         }
     }
@@ -29,7 +30,7 @@ object Repo {
     }
 
     private fun purchaseLine(p: Purchase) =
-        "${Fmt.num(p.qty)} ${p.unit} · ${Fmt.rp(p.price)} · ${p.kind.label}".replace("  ", " ")
+        "${Fmt.num(p.qty)} ${p.unit} · ${Fmt.rp(p.price)} · ${p.kind.label}${if (p.daily) " (spesial harian)" else ""}".replace("  ", " ")
 
     fun saveOrder(o: Order, old: Order?, me: Me) {
         Store.put(o.toJson())
