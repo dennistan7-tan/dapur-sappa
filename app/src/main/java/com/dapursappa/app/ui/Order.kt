@@ -1,5 +1,8 @@
 package com.dapursappa.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,7 +71,18 @@ fun OrderTab(
         SectionTitle("Daftar order")
         if (orders.isEmpty()) Muted("Belum ada order di tanggal ini.", modifier = Modifier.padding(vertical = 8.dp))
         for (o in orders) {
-            ClickCard(onClick = { onOpen(o.id, date) }, tone = Tone.Order) {
+            OrderCard(o) { onOpen(o.id, date) }
+        }
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Kartu order. onClick null = hanya lihat (tidak bisa diedit). */
+@Composable
+fun OrderCard(o: com.dapursappa.app.data.Order, onClick: (() -> Unit)?) {
+    val c = Sappa.c
+    val body: @Composable () -> Unit = {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         if (o.time.isNotBlank()) {
@@ -106,10 +120,15 @@ fun OrderTab(
                         if (o.shipping > 0) Tag("Ongkir ${Fmt.rp(o.shipping)}", c.accentSoft, c.accentText)
                     }
                 }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
+    }
+    if (onClick != null) {
+        ClickCard(onClick = onClick, tone = Tone.Order) { body() }
+    } else {
+        val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        androidx.compose.foundation.layout.Column(
+            Modifier.fillMaxWidth().clip(shape).background(toneBg(Tone.Order))
+                .border(1.dp, toneLine(Tone.Order), shape).padding(horizontal = 14.dp, vertical = 12.dp),
+        ) { body() }
     }
 }
 

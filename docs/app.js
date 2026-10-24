@@ -227,6 +227,11 @@
   }
 
   // ---------- Order ----------
+  function orderCard(o, edit) {
+      const addr = o.location ? `<span class="addr">${esc(o.location)}</span><span class="mu"> · </span>` : '';
+      const tags = [C.deliv(o) ? tag(C.deliv(o), 'ac') : '', o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : '', o.ship ? tag('Ongkir ' + C.rp(o.ship), 'ac') : ''].join('');
+    return `<div class="card t-order${edit ? ' click' : ''}"${edit ? ` data-a="editorder" data-v="${o.id}"` : ''}><div class="row"><span>${o.time ? `<b class="acc big">${esc(o.time)}</b> ` : ''}<b class="big">${esc(o.customer)}</b></span><b class="big">${C.rp(C.orderTotal(o))}</b></div><div class="subl">${addr}<b class="acc paxb">${o.only ? 'tanpa porsi' : o.pax + ' pax'}</b></div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}${tags ? `<div class="tags">${tags}</div>` : ''}</div>`;
+  }
   function vOrder(me) {
     const date = st.orderDate || (st.orderDate = today());
     const orders = D().orders.filter((o) => o.date === date).slice().sort((a, b) => { const x = C.orderKey(a) + a.customer.toLowerCase(), y = C.orderKey(b) + b.customer.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
@@ -239,11 +244,7 @@
     h += `<div class="g3">${tile('Order', orders.length, false, 't-order')}${tile('Porsi', pax, false, 't-order')}${tile('Omzet', C.rp(omzet), true, 't-money')}</div>`;
     h += '<h3>Daftar order</h3>';
     if (!orders.length) h += '<p class="mu pad">Belum ada order di tanggal ini.</p>';
-    orders.forEach((o) => {
-      const addr = o.location ? `<span class="addr">${esc(o.location)}</span><span class="mu"> · </span>` : '';
-      const tags = [C.deliv(o) ? tag(C.deliv(o), 'ac') : '', o.only ? tag('Lauk saja', 'ac') : C.extrasTotal(o) > 0 ? tag('+ Tambahan ' + C.rp(C.extrasTotal(o)), 'ac') : '', o.ship ? tag('Ongkir ' + C.rp(o.ship), 'ac') : ''].join('');
-      h += `<div class="card t-order click" data-a="editorder" data-v="${o.id}"><div class="row"><span>${o.time ? `<b class="acc big">${esc(o.time)}</b> ` : ''}<b class="big">${esc(o.customer)}</b></span><b class="big">${C.rp(C.orderTotal(o))}</b></div><div class="subl">${addr}<b class="acc paxb">${o.only ? 'tanpa porsi' : o.pax + ' pax'}</b></div>${o.remarks ? `<div class="note">Catatan: ${esc(o.remarks)}</div>` : ''}${(o.extras || []).map((e) => `<div class="note">Tambahan: ${esc(e.n)} ${e.q} × ${C.rp(e.p)}</div>`).join('')}${tags ? `<div class="tags">${tags}</div>` : ''}</div>`;
-    });
+    orders.forEach((o) => { h += orderCard(o, true); });
     return h;
   }
   function orderFormInit(id, date) {
@@ -314,17 +315,16 @@
     let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>${C.dayLong(date)}</h2><p class="mu">${esc(C.menuLines(d.menuName).join(' · ') || 'Menu belum diisi')} · ${d.pax} pax · ${d.orders.length} order</p></div>`;
     h += `<div class="g3">${tile('Omzet', C.rp(d.revenue), false, 't-money')}${tile('Modal', C.rp(d.cost), false, 't-money')}${tile('Profit', C.rp(d.profit), true, 't-money')}</div>`;
     if (d.expCost > 0) h += `<p class="mu">Profit sudah dikurangi pengeluaran lain ${C.rp(d.expCost)} (${esc(d.expenses.map((e) => e.name).join(', '))}).</p>`;
-    const z = st.zoom || 1;
-    h += `<div class="row"><h3>Bahan dan kemasan</h3><span class="zm"><button class="link" data-a="zoom" data-v="-1">A−</button><button class="link" data-a="zoom" data-v="1">A+</button></span></div>`;
-    h += `<div class="card t-shop" style="font-size:${Math.round(14 * z)}px;overflow-x:auto"><table><tr><th>Bahan</th><th>Qty</th><th>Harga</th><th>Per porsi</th></tr>`;
+    h += `<div class="row"><h3>Bahan dan kemasan</h3><span class="zm"><button class="link" data-a="zoom" data-v="-1">−</button><button class="link" data-a="zoom" data-v="0">1×</button><button class="link" data-a="zoom" data-v="1">+</button></span></div>`;
+    h += `<div class="zwrap"><div class="card t-shop zin" id="zin" style="${zStyle()}"><table><tr><th>Bahan</th><th>Qty</th><th>Harga</th><th>Per porsi</th></tr>`;
     if (!d.bahan.length && !d.kemasan.length) h += '<tr><td colspan="4" class="mu">Belum ada belanja untuk hari ini.</td></tr>';
     d.bahan.forEach((p) => { h += `<tr><td>${esc(p.name)}</td><td>${p.unit ? esc((C.num(p.qty) + ' ' + p.unit).trim()) : '<span class="acc">' + C.num(p.qty) + ' ?</span>'}</td><td>${C.th(p.price)}</td><td>${d.pax ? C.th(p.price / d.pax) : '-'}</td></tr>`; });
     d.kemasan.forEach((k) => { h += `<tr><td>${esc(k.name)}</td><td>${k.pcs} pcs</td><td>${C.th(k.cost)}</td><td>${C.th(k.unitPrice)}</td></tr>`; });
-    h += `<tr class="tot"><td>Total</td><td></td><td>${C.th(d.cost)}</td><td class="acc">${d.pax ? C.th(d.costPerPax) : '-'}</td></tr></table></div>`;
+    h += `<tr class="tot"><td>Total</td><td></td><td>${C.th(d.cost)}</td><td class="acc">${d.pax ? C.th(d.costPerPax) : '-'}</td></tr></table></div></div><p class="mu sm">Cubit 2 jari (atau tombol + −) untuk memperbesar, geser untuk melihat bagian lain.</p>`;
     if (d.pax) h += `<p class="mu sm">Per porsi = harga ÷ ${d.pax} pax terjual. Biaya bulanan tidak ikut dihitung di sini.</p>`;
     h += '<h3>Order hari ini</h3>';
     if (!d.orders.length) h += '<p class="mu">Belum ada order.</p>';
-    d.orders.forEach((o) => { h += `<div class="card t-order row click" data-a="editorder" data-v="${o.id}"><div><b>${esc(o.customer)}</b><div class="mu">${esc((C.deliv(o) ? C.deliv(o) + ' · ' : '') + (o.location ? o.location + ' · ' : '') + (o.only ? 'lauk saja' : o.pax + ' pax') + (C.extrasTotal(o) ? ' · + tambahan ' + C.rp(C.extrasTotal(o)) : ''))}</div></div><b>${C.rp(C.orderTotal(o))}</b></div>`; });
+    d.orders.forEach((o) => { h += orderCard(o, false); });
     return h;
   }
 
@@ -531,6 +531,35 @@
     }
     return '';
   }
+  // ---------- zoom tabel (cubit + geser) ----------
+  function zStyle() { const s = st.zs || 1; return `transform-origin:0 0;transform:translate(${st.zx || 0}px,${st.zy || 0}px) scale(${s})`; }
+  function zClamp() {
+    const w = $('.zwrap'); const s = st.zs || 1; if (!w) return;
+    if (s <= 1.01) { st.zs = 1; st.zx = 0; st.zy = 0; return; }
+    st.zx = Math.min(0, Math.max(w.clientWidth * (1 - s), st.zx || 0)); st.zy = Math.min(0, Math.max(w.clientHeight * (1 - s), st.zy || 0));
+  }
+  function initZoom() {
+    const w = $('.zwrap'); const el = $('#zin'); if (!w || !el) return;
+    let mode = null, d0 = 0, s0 = 1, p0 = null;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const apply = () => { zClamp(); el.style.cssText = zStyle(); };
+    w.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) { mode = 'pinch'; d0 = dist(e.touches); s0 = st.zs || 1; }
+      else if (e.touches.length === 1 && (st.zs || 1) > 1.01) { mode = 'pan'; p0 = { x: e.touches[0].clientX - (st.zx || 0), y: e.touches[0].clientY - (st.zy || 0) }; }
+    }, { passive: true });
+    w.addEventListener('touchmove', (e) => {
+      if (mode === 'pinch' && e.touches.length === 2) {
+        e.preventDefault();
+        const r = w.getBoundingClientRect(); const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left; const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+        const old = st.zs || 1; const ns = Math.max(1, Math.min(4, s0 * dist(e.touches) / d0)); const k = ns / old;
+        st.zx = cx - (cx - (st.zx || 0)) * k; st.zy = cy - (cy - (st.zy || 0)) * k; st.zs = ns; apply();
+      } else if (mode === 'pan' && e.touches.length === 1) {
+        e.preventDefault(); st.zx = e.touches[0].clientX - p0.x; st.zy = e.touches[0].clientY - p0.y; apply();
+      }
+    }, { passive: false });
+    w.addEventListener('touchend', () => { mode = null; });
+  }
+
   function render() {
     if (LS.get('ds_code', '') !== '1') return renderAuth('code');
     const me = getMe();
@@ -538,7 +567,7 @@
     const tabs = tabsFor(me);
     if (!st.tab || !tabs.some((t) => t[0] === st.tab)) st.tab = 'summary';
     $('#app').innerHTML = shell(me, body(me));
-    tickClock();
+    tickClock(); initZoom();
     if (st.tab === 'belanja' && !st.route) belPreview();
     window.scrollTo(0, 0);
   }
@@ -572,8 +601,8 @@
     theme() { LS.set('ds_theme', isDark() ? 'light' : 'dark'); applyTheme(); keepRender(); },
     tab(v) { st.tab = v; st.route = null; if (v === 'menu') menuInit(C.mondayOf(today())); if (v === 'kelola') st.f.ku = null; render(); if (v === 'belanja') { const i = $('#bel-text'); if (i) i.focus(); } },
     back() { st.route = null; keepRender(); },
-    zoom(v) { st.zoom = Math.max(0.8, Math.min(2, (st.zoom || 1) + 0.15 * +v)); render(); },
-    detail(v) { st.route = { name: 'detail', date: v }; render(); },
+    zoom(v) { st.zs = v === '0' ? 1 : Math.max(1, Math.min(4, (st.zs || 1) + 0.5 * +v)); zClamp(); const el = $('#zin'); if (el) el.style.cssText = zStyle(); },
+    detail(v) { st.route = { name: 'detail', date: v }; st.zs = 1; st.zx = 0; st.zy = 0; render(); },
     // belanja
     belprev() { st.belDate = C.addDays(st.belDate, -1); render(); }, belnext() { st.belDate = C.addDays(st.belDate, 1); render(); },
     belkind(v) { st.f.bKind = v; belPreview(); },

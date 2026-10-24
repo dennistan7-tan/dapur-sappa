@@ -92,3 +92,6 @@ table{width:100%;border-collapse:collapse}th{text-align:left;color:var(--mu);fon
 .g2s{display:grid;grid-template-columns:1fr 1fr;gap:0 8px;align-items:stretch}.stk .row{display:flex;justify-content:space-between;gap:6px;font-size:13px}.stk .row b{font-size:15px}
 
 .g3 .tile b{font-size:clamp(11px,4.4vw,18px);white-space:nowrap}.zm{display:flex;gap:6px}.zm .link{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:4px 10px;font-weight:800}
+
+.zwrap{overflow:hidden;border-radius:16px;margin:8px 0}.zwrap .zin{margin:0}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g3 .tile{min-width:0;overflow:hidden}

@@ -1,4 +1,3 @@
-Dapur Sappa v0.4.12
-- Angka di kotak Omzet/Modal/Profit mengecil otomatis di layar kecil (tidak patah baris)
-- Tabel Bahan dan kemasan bisa di-zoom (cubit dengan 2 jari atau tombol A- A+)
-- Belanja: satuan wajib (1 kg, 10 pcs, 1 ikat, dll), ada pengingat dan pilihan cepat satuan
+Dapur Sappa v0.4.13
+- Tabel Bahan dan kemasan: cubit 2 jari untuk zoom tampilan, geser untuk panning (bukan lagi memperbesar font)
+- Detail hari: daftar order memakai kartu yang sama dengan tab Order (hanya lihat, tidak bisa diedit)
