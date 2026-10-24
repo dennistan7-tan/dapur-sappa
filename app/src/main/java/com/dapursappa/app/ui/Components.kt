@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.dapursappa.app.R
 import kotlinx.coroutines.delay
@@ -146,8 +147,18 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, highli
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(label, color = if (highlight) c.onOkSolid else c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Text(value, color = fg, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        FitText(value, fg, 18.sp, FontWeight.ExtraBold)
     }
+}
+
+/** Teks satu baris yang mengecil otomatis kalau layar sempit atau ukuran font HP besar. */
+@Composable
+fun FitText(text: String, color: Color, maxSize: TextUnit, weight: FontWeight, modifier: Modifier = Modifier, minSize: TextUnit = 9.sp) {
+    var size by remember(text, maxSize) { mutableStateOf(maxSize) }
+    Text(
+        text, modifier, color = color, fontSize = size, fontWeight = weight, maxLines = 1, softWrap = false,
+        onTextLayout = { r -> if (r.hasVisualOverflow && size.value > minSize.value) size = (size.value * 0.9f).sp },
+    )
 }
 
 @Composable

@@ -179,6 +179,7 @@
     if (!items.length && !exps.length) h += '<p class="mu pad">Belum ada belanja atau pengeluaran di tanggal ini.</p>';
     items.forEach((p) => {
       let sub = (C.num(p.qty) + ' ' + p.unit).trim();
+      if (!p.unit && p.kind !== 'LAIN') sub = C.num(p.qty) + ' (satuan belum diisi)';
       if (p.kind === 'KEMASAN' && p.qty > 0) sub += ' · ' + C.rp(Math.round(p.price / p.qty)) + ' per ' + (p.unit || 'pcs');
       if (p.kind === 'KEMASAN' && p.daily) sub += ' · spesial harian';
       if ((p.kind === 'BAHAN' || p.daily) && (p.useDate || p.date) !== p.date) sub += ' · untuk ' + C.dayName(p.useDate);
@@ -197,6 +198,7 @@
     const vd = st.belDate || today();
     if (!p.ok) { box.innerHTML = `<p class="warn">${p.price <= 0 ? 'Harga belum terbaca. Tulis harga seperti 36rb atau 36000.' : 'Nama barang belum terbaca.'}</p><button class="btn o" data-a="belmanual">Isi manual</button>`; return; }
     const kind = st.f.bKind || p.kind;
+    const needUnit = kind !== 'LAIN' && !p.unit;
     const use = st.f.bUse || vd;
     const daily = kind === 'KEMASAN' && st.f.bDaily === 'D';
     const per = p.qty > 0 ? Math.round(p.price / p.qty) : p.price;
@@ -204,6 +206,7 @@
     let h = kind === 'LAIN'
       ? `<div class="prev"><small class="okc">Terbaca otomatis</small><b>${esc(p.name)} · ${C.rp(p.price)}</b><div class="mu">Pengeluaran lain (bensin, tambal ban, dll)</div></div>`
       : `<div class="prev"><small class="okc">Terbaca otomatis</small><b>${esc(p.name)} · ${esc((C.num(p.qty) + ' ' + p.unit).trim())} · ${C.rp(p.price)}</b><div class="mu">Jenis: ${esc(kindLabel(kind).toLowerCase())} · ${esc(perTxt)}</div></div>`;
+    if (needUnit) h += '<p class="warn">Satuan belum ditulis. Tulis jumlah + satuan, mis. 1 kg, 10 pcs, 1 ikat, 500 gram, 3 ons.</p>';
     h += '<div class="mu">Jenis</div><div class="chips">' + ['BAHAN', 'KEMASAN', 'BULANAN', 'LAIN'].map((k) => chip(kindLabel(k), kind === k, 'belkind', k)).join('') + '</div>';
     if (kind === 'KEMASAN') {
       h += `<div class="mu">Charge ke</div><div class="chips">${chip('Stok bulanan', !daily, 'beldaily', 'S')}${chip('Harian (spesial)', daily, 'beldaily', 'D')}</div><p class="mu sm">${daily ? 'Biaya masuk ke hari yang dipilih. Kemasan stok bulanan tidak dihitung di hari itu.' : 'Masuk stok kemasan, terpotong 1 pcs per porsi.'}</p>`;
@@ -311,9 +314,11 @@
     let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>${C.dayLong(date)}</h2><p class="mu">${esc(C.menuLines(d.menuName).join(' · ') || 'Menu belum diisi')} · ${d.pax} pax · ${d.orders.length} order</p></div>`;
     h += `<div class="g3">${tile('Omzet', C.rp(d.revenue), false, 't-money')}${tile('Modal', C.rp(d.cost), false, 't-money')}${tile('Profit', C.rp(d.profit), true, 't-money')}</div>`;
     if (d.expCost > 0) h += `<p class="mu">Profit sudah dikurangi pengeluaran lain ${C.rp(d.expCost)} (${esc(d.expenses.map((e) => e.name).join(', '))}).</p>`;
-    h += '<h3>Bahan dan kemasan</h3><div class="card t-shop"><table><tr><th>Bahan</th><th>Qty</th><th>Harga</th><th>Per porsi</th></tr>';
+    const z = st.zoom || 1;
+    h += `<div class="row"><h3>Bahan dan kemasan</h3><span class="zm"><button class="link" data-a="zoom" data-v="-1">A−</button><button class="link" data-a="zoom" data-v="1">A+</button></span></div>`;
+    h += `<div class="card t-shop" style="font-size:${Math.round(14 * z)}px;overflow-x:auto"><table><tr><th>Bahan</th><th>Qty</th><th>Harga</th><th>Per porsi</th></tr>`;
     if (!d.bahan.length && !d.kemasan.length) h += '<tr><td colspan="4" class="mu">Belum ada belanja untuk hari ini.</td></tr>';
-    d.bahan.forEach((p) => { h += `<tr><td>${esc(p.name)}</td><td>${esc((C.num(p.qty) + ' ' + p.unit).trim())}</td><td>${C.th(p.price)}</td><td>${d.pax ? C.th(p.price / d.pax) : '-'}</td></tr>`; });
+    d.bahan.forEach((p) => { h += `<tr><td>${esc(p.name)}</td><td>${p.unit ? esc((C.num(p.qty) + ' ' + p.unit).trim()) : '<span class="acc">' + C.num(p.qty) + ' ?</span>'}</td><td>${C.th(p.price)}</td><td>${d.pax ? C.th(p.price / d.pax) : '-'}</td></tr>`; });
     d.kemasan.forEach((k) => { h += `<tr><td>${esc(k.name)}</td><td>${k.pcs} pcs</td><td>${C.th(k.cost)}</td><td>${C.th(k.unitPrice)}</td></tr>`; });
     h += `<tr class="tot"><td>Total</td><td></td><td>${C.th(d.cost)}</td><td class="acc">${d.pax ? C.th(d.costPerPax) : '-'}</td></tr></table></div>`;
     if (d.pax) h += `<p class="mu sm">Per porsi = harga ÷ ${d.pax} pax terjual. Biaya bulanan tidak ikut dihitung di sini.</p>`;
@@ -567,6 +572,7 @@
     theme() { LS.set('ds_theme', isDark() ? 'light' : 'dark'); applyTheme(); keepRender(); },
     tab(v) { st.tab = v; st.route = null; if (v === 'menu') menuInit(C.mondayOf(today())); if (v === 'kelola') st.f.ku = null; render(); if (v === 'belanja') { const i = $('#bel-text'); if (i) i.focus(); } },
     back() { st.route = null; keepRender(); },
+    zoom(v) { st.zoom = Math.max(0.8, Math.min(2, (st.zoom || 1) + 0.15 * +v)); render(); },
     detail(v) { st.route = { name: 'detail', date: v }; render(); },
     // belanja
     belprev() { st.belDate = C.addDays(st.belDate, -1); render(); }, belnext() { st.belDate = C.addDays(st.belDate, 1); render(); },
@@ -585,6 +591,7 @@
     belsave() {
       const me = getMe(); const p = C.parse(st.f.belText || ''); if (!p || !p.ok) return;
       const vd = st.belDate; const kind = st.f.bKind || p.kind;
+      if (kind !== 'LAIN' && !p.unit) { A.belmanual(); return; }
       if (kind === 'LAIN') saveExpense({ t: 'e', id: C.uuid(), date: vd, name: p.name, amount: p.price, monthly: st.f.bCharge === 'M', by: me.idx, del: false }, me);
       else savePurchase(draftPurchase(p, kind, vd, st.f.bUse || vd, me), null, me);
       st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bCharge = null; st.f.bDaily = null; keepRender();
@@ -598,6 +605,7 @@
     msave() {
       const m = st.m, me = getMe(); const price = +m.price || 0;
       if (!m.name.trim() || price <= 0) { m.err = 'Nama dan harga harus diisi.'; purModal(); return; }
+      if (m.kind !== 'LAIN' && !(m.unit || '').trim()) { m.err = 'Isi satuan dulu: kg, gram, ons, pcs, ikat, dll.'; purModal(); return; }
       if (m.kind === 'LAIN') {
         saveExpense({ t: 'e', id: m.id, date: m.date, name: m.name.trim(), amount: price, monthly: m.charge === 'M', by: me.idx, del: false }, me);
         st.f.belText = ''; st.f.bKind = null; st.f.bUse = null; st.f.bCharge = null; closeModal(); keepRender(); return;

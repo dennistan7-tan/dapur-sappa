@@ -75,6 +75,7 @@ fun BelanjaTab(me: Me, data: AppData) {
     val parsed = remember(text) { Parser.parse(text) }
     val kind = kindOverride ?: parsed?.kind ?: Kind.BAHAN
     val usesDate = kind == Kind.BAHAN || (kind == Kind.KEMASAN && kemDaily)
+    val needUnit = parsed != null && parsed.ok && kind != Kind.LAIN && parsed.unit.isBlank()
     val items = data.purchases.filter { it.date == viewDate.toString() }
     val exps = data.expenses.filter { it.date == viewDate.toString() }
     val forToday = items.filter { it.kind != Kind.BULANAN && it.useDate == it.date }.sumOf { it.price }
@@ -110,6 +111,10 @@ fun BelanjaTab(me: Me, data: AppData) {
                 Spacer(Modifier.height(10.dp))
                 if (parsed.ok) {
                     PreviewBlock(parsed, kind)
+                    if (needUnit) {
+                        Spacer(Modifier.height(6.dp))
+                        Muted("Satuan belum ditulis. Tulis jumlah + satuan, mis. 1 kg, 10 pcs, 1 ikat, 500 gram, 3 ons.", color = c.warn)
+                    }
                     Spacer(Modifier.height(10.dp))
                     Muted("Jenis")
                     Spacer(Modifier.height(4.dp))
@@ -157,7 +162,12 @@ fun BelanjaTab(me: Me, data: AppData) {
                             dialogNew = true
                             dialog = draftFrom(parsed, text, kind, viewDate, if (usesDate) useDate else viewDate, me, kind == Kind.KEMASAN && kemDaily)
                         }
-                        PrimaryButton("Simpan", Modifier.weight(1f)) { saveParsed(parsed) }
+                        PrimaryButton("Simpan", Modifier.weight(1f)) {
+                            if (needUnit) {
+                                dialogNew = true
+                                dialog = draftFrom(parsed, text, kind, viewDate, if (usesDate) useDate else viewDate, me, kind == Kind.KEMASAN && kemDaily)
+                            } else saveParsed(parsed)
+                        }
                     }
                 } else {
                     Muted(
@@ -259,7 +269,7 @@ fun BelanjaTab(me: Me, data: AppData) {
 
 fun purchaseSub(p: Purchase): String {
     val parts = ArrayList<String>()
-    parts.add((Fmt.num(p.qty) + " " + p.unit).trim())
+    parts.add(if (p.unit.isBlank() && p.kind != Kind.LAIN) Fmt.num(p.qty) + " (satuan belum diisi)" else (Fmt.num(p.qty) + " " + p.unit).trim())
     if (p.kind == Kind.KEMASAN && p.qty > 0) parts.add(Fmt.rp(Math.round(p.price / p.qty)) + " per " + p.unit.ifBlank { "pcs" })
     if (p.kind == Kind.KEMASAN && p.daily) parts.add("spesial harian")
     if ((p.kind == Kind.BAHAN || p.daily) && p.useDate != p.date) {
@@ -321,6 +331,7 @@ fun PurchaseDialog(
     var use by remember { mutableStateOf(LocalDate.parse(init.useDate)) }
     var charge by remember { mutableStateOf(false) }
     var daily by remember { mutableStateOf(init.daily) }
+    var err by remember { mutableStateOf("") }
     var pick by remember { mutableStateOf(false) }
     val base = LocalDate.parse(init.date)
 
@@ -333,7 +344,11 @@ fun PurchaseDialog(
                 Field("Nama barang", name, { name = it })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field("Jumlah", qty, { qty = it.filter { ch -> ch.isDigit() || ch == ',' || ch == '.' }.take(8) }, Modifier.weight(1f), KeyboardType.Decimal)
-                    Field("Satuan", unit, { unit = it.take(12) }, Modifier.weight(1f))
+                    Field("Satuan", unit, { unit = it.take(12); err = "" }, Modifier.weight(1f))
+                }
+                if (kind != Kind.LAIN) {
+                    ChipScroll { listOf("kg", "gram", "ons", "pcs", "ikat", "pack", "bungkus", "butir").forEach { u -> Chip(u, unit.trim().lowercase() == u) { unit = u; err = "" } } }
+                    if (err.isNotBlank()) Muted(err, color = c.warn)
                 }
                 Field("Harga total (Rp)", price, { price = digits(it) }, keyboard = KeyboardType.Number)
                 Muted("Jenis")
@@ -367,6 +382,8 @@ fun PurchaseDialog(
                 val pr = price.toLongOrNull() ?: 0L
                 if (name.isNotBlank() && pr > 0 && kind == Kind.LAIN) {
                     onSaveExpense(name.trim(), pr, charge)
+                } else if (name.isNotBlank() && pr > 0 && unit.isBlank()) {
+                    err = "Isi satuan dulu: kg, gram, ons, pcs, ikat, dll."
                 } else if (name.isNotBlank() && pr > 0) {
                     val q = qty.replace(',', '.').toDoubleOrNull() ?: 1.0
                     onSave(init.copy(name = name.trim(), qty = q, unit = unit.trim(), price = pr, kind = kind, useDate = if (kind == Kind.BAHAN || (kind == Kind.KEMASAN && daily)) use.toString() else init.date, daily = kind == Kind.KEMASAN && daily))

@@ -1,3 +1,4 @@
-Dapur Sappa v0.4.11
-- Summary: stok sisa kemasan (kanan Gross Profit), terpotong 1 pcs per porsi
-- Belanja kemasan: pilih Stok bulanan atau Harian (spesial); hari spesial hanya hitung kemasan spesial
+Dapur Sappa v0.4.12
+- Angka di kotak Omzet/Modal/Profit mengecil otomatis di layar kecil (tidak patah baris)
+- Tabel Bahan dan kemasan bisa di-zoom (cubit dengan 2 jari atau tombol A- A+)
+- Belanja: satuan wajib (1 kg, 10 pcs, 1 ikat, dll), ada pengingat dan pilihan cepat satuan

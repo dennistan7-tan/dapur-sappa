@@ -4,6 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -141,6 +146,7 @@ fun DayCard(d: DayCalc, onClick: () -> Unit) {
 fun DetailHari(me: Me, data: AppData, date: LocalDate, onBack: () -> Unit, onOpenOrder: (String) -> Unit) {
     val c = Sappa.c
     val d = Calc.day(data, date)
+    var zoom by remember { mutableStateOf(1f) }
     Column(Modifier.fillMaxSize()) {
         SubHeader(Fmt.dayLong(date), (d.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" · ").ifBlank { "Menu belum diisi" }) + " · ${d.pax} pax · ${d.orders.size} order", onBack)
         Column(
@@ -154,13 +160,33 @@ fun DetailHari(me: Me, data: AppData, date: LocalDate, onBack: () -> Unit, onOpe
             }
             if (d.expCost > 0) Muted("Profit sudah dikurangi pengeluaran lain ${Fmt.rp(d.expCost)} (${d.expenses.joinToString(", ") { it.name }}).")
 
-            SectionTitle("Bahan dan kemasan")
-            SCard(tone = Tone.Shop) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                SectionTitle("Bahan dan kemasan")
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("A−", Modifier.clip(RoundedCornerShape(8.dp)).background(c.surface2).clickable { zoom = (zoom - 0.15f).coerceIn(0.8f, 2f) }.padding(horizontal = 12.dp, vertical = 6.dp), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("A+", Modifier.clip(RoundedCornerShape(8.dp)).background(c.surface2).clickable { zoom = (zoom + 0.15f).coerceIn(0.8f, 2f) }.padding(horizontal = 12.dp, vertical = 6.dp), color = c.text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            SCard(
+                Modifier.pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val ev = awaitPointerEvent()
+                            if (ev.changes.size >= 2) {
+                                val zc = ev.calculateZoom()
+                                if (zc != 1f) { zoom = (zoom * zc).coerceIn(0.8f, 2f); ev.changes.forEach { it.consume() } }
+                            }
+                        } while (ev.changes.any { it.pressed })
+                    }
+                },
+                tone = Tone.Shop,
+            ) {
                 Row(Modifier.fillMaxWidth()) {
-                    Text("Bahan", Modifier.weight(1.6f), color = c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("Qty", Modifier.weight(1f), color = c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("Harga", Modifier.weight(1f), color = c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("Per porsi", Modifier.weight(1f), color = c.text2, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Bahan", Modifier.weight(1.6f), color = c.text2, fontSize = (11 * zoom).sp, fontWeight = FontWeight.Bold)
+                    Text("Qty", Modifier.weight(1f), color = c.text2, fontSize = (11 * zoom).sp, fontWeight = FontWeight.Bold)
+                    Text("Harga", Modifier.weight(1f), color = c.text2, fontSize = (11 * zoom).sp, fontWeight = FontWeight.Bold)
+                    Text("Per porsi", Modifier.weight(1f), color = c.text2, fontSize = (11 * zoom).sp, fontWeight = FontWeight.Bold)
                 }
                 Rule()
                 if (d.bahan.isEmpty() && d.kemasan.isEmpty()) {
@@ -168,26 +194,29 @@ fun DetailHari(me: Me, data: AppData, date: LocalDate, onBack: () -> Unit, onOpe
                 }
                 for (p in d.bahan) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                        Text(p.name, Modifier.weight(1.6f), color = c.text, fontSize = 12.sp)
-                        Text((Fmt.num(p.qty) + " " + p.unit).trim(), Modifier.weight(1f), color = c.text2, fontSize = 12.sp)
-                        Text(Fmt.thousands(p.price), Modifier.weight(1f), color = c.text, fontSize = 12.sp)
-                        Text(if (d.pax > 0) Fmt.thousands(Math.round(p.price.toDouble() / d.pax)) else "-", Modifier.weight(1f), color = c.text2, fontSize = 12.sp)
+                        Text(p.name, Modifier.weight(1.6f), color = c.text, fontSize = (12 * zoom).sp)
+                        Text(
+                            if (p.unit.isBlank()) Fmt.num(p.qty) + " ?" else (Fmt.num(p.qty) + " " + p.unit).trim(),
+                            Modifier.weight(1f), color = if (p.unit.isBlank()) c.accentText else c.text2, fontSize = (12 * zoom).sp,
+                        )
+                        Text(Fmt.thousands(p.price), Modifier.weight(1f), color = c.text, fontSize = (12 * zoom).sp)
+                        Text(if (d.pax > 0) Fmt.thousands(Math.round(p.price.toDouble() / d.pax)) else "-", Modifier.weight(1f), color = c.text2, fontSize = (12 * zoom).sp)
                     }
                 }
                 for (k in d.kemasan) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                        Text(k.name, Modifier.weight(1.6f), color = c.text, fontSize = 12.sp)
-                        Text("${k.pcs} pcs", Modifier.weight(1f), color = c.text2, fontSize = 12.sp)
-                        Text(Fmt.thousands(k.cost), Modifier.weight(1f), color = c.text, fontSize = 12.sp)
-                        Text(Fmt.thousands(Math.round(k.unitPrice)), Modifier.weight(1f), color = c.text2, fontSize = 12.sp)
+                        Text(k.name, Modifier.weight(1.6f), color = c.text, fontSize = (12 * zoom).sp)
+                        Text("${k.pcs} pcs", Modifier.weight(1f), color = c.text2, fontSize = (12 * zoom).sp)
+                        Text(Fmt.thousands(k.cost), Modifier.weight(1f), color = c.text, fontSize = (12 * zoom).sp)
+                        Text(Fmt.thousands(Math.round(k.unitPrice)), Modifier.weight(1f), color = c.text2, fontSize = (12 * zoom).sp)
                     }
                 }
                 Rule()
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Text("Total", Modifier.weight(1.6f), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Total", Modifier.weight(1.6f), color = c.text, fontSize = (13 * zoom).sp, fontWeight = FontWeight.ExtraBold)
                     Text("", Modifier.weight(1f))
-                    Text(Fmt.thousands(d.cost), Modifier.weight(1f), color = c.text, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(if (d.pax > 0) Fmt.thousands(Math.round(d.costPerPax)) else "-", Modifier.weight(1f), color = c.accentText, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(Fmt.thousands(d.cost), Modifier.weight(1f), color = c.text, fontSize = (13 * zoom).sp, fontWeight = FontWeight.ExtraBold)
+                    Text(if (d.pax > 0) Fmt.thousands(Math.round(d.costPerPax)) else "-", Modifier.weight(1f), color = c.accentText, fontSize = (13 * zoom).sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
             if (d.pax > 0) Muted("Per porsi = harga ÷ ${d.pax} pax terjual. Biaya bulanan tidak ikut dihitung di sini.")
