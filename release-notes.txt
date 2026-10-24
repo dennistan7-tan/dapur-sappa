@@ -1,3 +1,3 @@
-Dapur Sappa v0.4.13
-- Tabel Bahan dan kemasan: cubit 2 jari untuk zoom tampilan, geser untuk panning (bukan lagi memperbesar font)
-- Detail hari: daftar order memakai kartu yang sama dengan tab Order (hanya lihat, tidak bisa diedit)
+Dapur Sappa v0.4.14
+- Perbaikan: aplikasi crash saat zoom tabel dilepas
+- Summary: tampilan stok kemasan dihapus (Gross Profit kembali selebar penuh)

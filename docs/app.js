@@ -305,8 +305,7 @@
     const end = C.addDays(ws, 6);
     let h = nav('Summary Week ' + C.weekNo(ws), C.range(ws, end), 'wkprev', 'wknext');
     h += `<div class="g2">${tile('Total pax', sum((d) => d.pax), false, 't-money')}${tile('Omzet', C.rp(sum((d) => d.revenue)), false, 't-money')}</div>`;
-    const stock = C.kemasanStock(D(), today());
-    h += `<div class="g2s">${tile('Gross Profit', C.rp(sum((d) => d.profit)), true, 't-money')}<div class="tile t-shop stk"><small>Stok kemasan</small>${stock.length ? stock.map((s) => { const l = Math.round(s.left); return `<div class="row"><span>${esc(s.name)}</span><b class="${l <= 10 ? 'acc' : ''}">${l} ${esc(s.unit)}</b></div>`; }).join('') : '<span class="mu">Belum ada</span>'}</div></div>`;
+    h += tile('Gross Profit', C.rp(sum((d) => d.profit)), true, 't-money');
     h += '<h3>Menu minggu ini</h3><div class="g2">' + days.map(dayCard).join('') + '</div>';
     return h;
   }

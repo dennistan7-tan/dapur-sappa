@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.layout.onSizeChanged
 
 /** Isi bisa diperbesar dengan cubit 2 jari dan digeser (panning) saat sudah diperbesar. Ukuran kotak tetap. */
@@ -36,20 +37,28 @@ fun PinchZoomBox(modifier: Modifier = Modifier, content: @Composable () -> Unit)
                     awaitFirstDown(requireUnconsumed = false)
                     do {
                         val ev = awaitPointerEvent()
-                        val multi = ev.changes.count { it.pressed } >= 2
-                        if (multi || scale > 1.01f) {
+                        try {
+                        val down = ev.changes.count { it.pressed }
+                        val multi = down >= 2
+                        if (down >= 1 && (multi || scale > 1.01f)) {
                             val zoom = if (multi) ev.calculateZoom() else 1f
                             val pan = ev.calculatePan()
                             val cen = ev.calculateCentroid()
-                            val ns = (scale * zoom).coerceIn(1f, 4f)
-                            val k = ns / scale
-                            var nx = cen.x - (cen.x - ox) * k + pan.x
-                            var ny = cen.y - (cen.y - oy) * k + pan.y
-                            nx = nx.coerceIn(w * (1f - ns), 0f)
-                            ny = ny.coerceIn(h * (1f - ns), 0f)
-                            if (ns <= 1.01f) { nx = 0f; ny = 0f }
-                            scale = ns; ox = nx; oy = ny
-                            ev.changes.forEach { if (it.positionChanged()) it.consume() }
+                            if (cen.isSpecified && zoom.isFinite() && zoom > 0f && pan.x.isFinite() && pan.y.isFinite()) {
+                                val ns = (scale * zoom).coerceIn(1f, 4f)
+                                val k = ns / scale
+                                var nx = cen.x - (cen.x - ox) * k + pan.x
+                                var ny = cen.y - (cen.y - oy) * k + pan.y
+                                nx = nx.coerceIn(minOf(0f, w * (1f - ns)), 0f)
+                                ny = ny.coerceIn(minOf(0f, h * (1f - ns)), 0f)
+                                if (ns <= 1.01f || !nx.isFinite() || !ny.isFinite()) { nx = 0f; ny = 0f }
+                                scale = if (ns.isFinite()) ns else 1f; ox = nx; oy = ny
+                                ev.changes.forEach { if (it.positionChanged()) it.consume() }
+                            }
+                        }
+                        } catch (e: Exception) {
+                            if (e is kotlinx.coroutines.CancellationException) throw e
+                            scale = 1f; ox = 0f; oy = 0f
                         }
                     } while (ev.changes.any { it.pressed })
                 }
