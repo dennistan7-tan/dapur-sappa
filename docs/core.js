@@ -181,7 +181,7 @@
   C.orderTotal = (o) => C.orderPortions(o) * (o.price || 0) + C.extrasTotal(o) + (o.ship || 0);
 
   C.buildData = function (recs) {
-    const d = { purchases: [], orders: [], menus: {}, expenses: [], audits: [], users: C.defaultUsers() };
+    const d = { purchases: [], orders: [], menus: {}, expenses: [], audits: [], users: C.defaultUsers(), settlements: [] };
     Object.keys(recs).forEach((id) => {
       const o = recs[id];
       switch (o.t) {
@@ -198,11 +198,33 @@
         }
         case 'e': if (!o.del) d.expenses.push(o); break;
         case 'a': d.audits.push(o); break;
+        case 's': if (!o.del) d.settlements.push(o); break;
         case 'c': if (o.users && o.users.length) d.users = o.users.slice(0, 1).map((u) => ({ name: !(u.name || '').trim() || /^User \d+$/.test(u.name.trim()) ? 'User' : u.name, role: 'User' })); break;
       }
     });
     d.audits.sort((a, b) => b.ts - a.ts);
     return d;
+  };
+
+  C.settleId = (key, week) => {
+    let h = 5381; for (let i = 0; i < key.length; i++) h = ((h << 5) + h + key.charCodeAt(i)) | 0;
+    return 's-' + key.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 24) + '-' + (h >>> 0).toString(36) + '-' + week;
+  };
+  C.confirmWeeks = function (d, any) {
+    const first = C.firstOfMonth(any); const out = [];
+    let mon = C.mondayOf(first); if (mon.substring(0, 7) !== first.substring(0, 7)) mon = C.addDays(mon, 7);
+    while (mon.substring(0, 7) === first.substring(0, 7)) {
+      const end = C.addDays(mon, 6); const g = {};
+      d.orders.forEach((o) => { if (o.date >= mon && o.date <= end && C.orderTotal(o) > 0) (g[o.customer.trim().toLowerCase()] = g[o.customer.trim().toLowerCase()] || []).push(o); });
+      const rows = Object.keys(g).map((key) => {
+        const os = g[key].sort((a, b) => (a.date < b.date ? -1 : 1)); const sid = C.settleId(key, mon);
+        return { key, name: os[0].customer.trim(), week: mon, orders: os, bill: os.reduce((s, o) => s + C.orderTotal(o), 0),
+          unpaid: os.filter((o) => !o.paid).reduce((s, o) => s + C.orderTotal(o), 0), settlement: d.settlements.find((x) => x.id === sid) || null };
+      }).sort((a, b) => (a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1));
+      out.push({ week: mon, end, rows, bill: rows.reduce((s, r) => s + r.bill, 0), unpaid: rows.reduce((s, r) => s + r.unpaid, 0) });
+      mon = C.addDays(mon, 7);
+    }
+    return out;
   };
 
   C.menuOf = (d, date) => d.menus[C.mondayOf(date)] || null;
@@ -300,10 +322,11 @@
     const monthlyLines = Object.keys(lines).map((k) => [k, lines[k]]);
     const monthlyCost = monthlyLines.reduce((s, x) => s + x[1], 0);
     const sum = (f) => days.reduce((s, x) => s + f(x), 0);
+    const extraIncome = (d.settlements || []).filter((s) => String(s.week).indexOf(prefix) === 0).reduce((t, s) => t + (s.inc || []).reduce((u, i) => u + (+i.a || 0), 0), 0);
     return {
-      first, days, revenue: sum((x) => x.revenue), bahanCost: sum((x) => x.bahanCost), kemasanCost: sum((x) => x.kemasanCost),
+      extraIncome, first, days, revenue: sum((x) => x.revenue), bahanCost: sum((x) => x.bahanCost), kemasanCost: sum((x) => x.kemasanCost),
       modal: sum((x) => x.cost), expHarian: sum((x) => x.expCost), monthlyLines, monthlyCost,
-      profit: sum((x) => x.profit) - monthlyCost, pax: sum((x) => x.pax),
+      profit: sum((x) => x.profit) - monthlyCost + extraIncome, pax: sum((x) => x.pax),
       unpaid: d.orders.filter((o) => o.date.indexOf(prefix) === 0 && !o.paid && C.orderTotal(o) > 0),
     };
   };

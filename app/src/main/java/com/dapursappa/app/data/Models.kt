@@ -204,6 +204,44 @@ fun usersFromJson(j: JSONObject): List<UserCfg> {
     return if (out.isEmpty()) defaultUsers() else out
 }
 
+data class Income(val reason: String, val amount: Long)
+
+/** Pelunasan satu customer untuk satu minggu (dikonfirmasi admin). Pemasukan tambahan murni, tanpa modal. */
+data class Settlement(
+    val id: String, val key: String, val name: String, val week: String, val method: String,
+    val note: String, val ts: Long, val by: String, val incomes: List<Income> = emptyList(), val deleted: Boolean = false,
+) {
+    val extra: Long get() = incomes.sumOf { it.amount }
+
+    fun toJson(): JSONObject {
+        val arr = JSONArray()
+        for (i in incomes) arr.put(JSONObject().put("r", i.reason).put("a", i.amount))
+        return JSONObject().put("t", "s").put("id", id).put("key", key).put("name", name).put("week", week)
+            .put("pm", method).put("note", note).put("ts", ts).put("by", by).put("inc", arr).put("del", deleted)
+    }
+
+    companion object {
+        fun idOf(key: String, week: String): String {
+            var h = 5381
+            for (c in key) h = (h shl 5) + h + c.code
+            val safe = key.lowercase().replace(Regex("[^a-z0-9]"), "_").take(24)
+            return "s-" + safe + "-" + (h.toLong() and 0xffffffffL).toString(36) + "-" + week
+        }
+
+        fun from(j: JSONObject): Settlement {
+            val list = ArrayList<Income>()
+            val arr = j.optJSONArray("inc")
+            if (arr != null) for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i); list.add(Income(o.optString("r"), o.optLong("a")))
+            }
+            return Settlement(
+                j.getString("id"), j.optString("key"), j.optString("name"), j.optString("week"), j.optString("pm"),
+                j.optString("note"), j.optLong("ts"), j.optString("by"), list, j.optBoolean("del"),
+            )
+        }
+    }
+}
+
 data class AppData(
     val purchases: List<Purchase> = emptyList(),
     val orders: List<Order> = emptyList(),
@@ -211,4 +249,5 @@ data class AppData(
     val expenses: List<Expense> = emptyList(),
     val audits: List<Audit> = emptyList(),
     val users: List<UserCfg> = defaultUsers(),
+    val settlements: List<Settlement> = emptyList(),
 )

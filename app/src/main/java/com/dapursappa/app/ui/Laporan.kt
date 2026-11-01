@@ -47,6 +47,7 @@ fun LaporanTab(
     week: LocalDate,
     onWeek: (LocalDate) -> Unit,
     onDay: (LocalDate) -> Unit,
+    onConfirm: () -> Unit = {},
 ) {
     Column(
         Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -66,6 +67,7 @@ fun LaporanTab(
             3 -> CustomerReport(me, data, month, onMonth)
             else -> BulananReport(data, month, onMonth, onDay)
         }
+        PrimaryButton("Konfirmasi Pembayaran Customer") { onConfirm() }
         OutlineButton("Export laporan ke Excel (bulan, minggu, hari, pengeluaran)") { xmsg = exportLaporanExcel(ctx, data) }
         if (xmsg.isNotEmpty()) Muted(xmsg)
         Spacer(Modifier.height(8.dp))
@@ -81,7 +83,7 @@ private fun monthSub(month: LocalDate): String {
 }
 
 @Composable
-private fun MonthNav(month: LocalDate, onMonth: (LocalDate) -> Unit) {
+fun MonthNav(month: LocalDate, onMonth: (LocalDate) -> Unit) {
     NavBar(Fmt.monthName(month), monthSub(month), { onMonth(month.minusMonths(1)) }, { onMonth(month.plusMonths(1)) })
 }
 
@@ -155,6 +157,7 @@ private fun BulananReport(data: AppData, month: LocalDate, onMonth: (LocalDate) 
         StatTile("Pengeluaran lain", Fmt.rp(m.expHarian), Modifier.weight(1f))
         StatTile("Biaya bulanan", Fmt.rp(m.monthlyCost), Modifier.weight(1f))
     }
+    if (m.extraIncome > 0) StatTile("Pemasukan tambahan (ongkir dll)", Fmt.rp(m.extraIncome), Modifier.fillMaxWidth())
 
     SectionTitle("Omzet dan margin per minggu")
     val groups = m.days.groupBy { Fmt.mondayOf(it.date) }

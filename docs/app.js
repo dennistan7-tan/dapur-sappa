@@ -359,6 +359,7 @@
       h += tile('Profit bersih bulan ini', C.rp(m.profit), true, 't-money');
       h += `<div class="g2">${tile('Margin bersih', C.pct(m.profit, m.revenue), false, 't-money')}${tile('Margin sebelum biaya bulanan', C.pct(gross, m.revenue), false, 't-money')}</div>`;
       h += `<div class="g4">${tile('Omzet', C.rp(m.revenue), false, 't-money')}${tile('Modal belanja', C.rp(m.modal), false, 't-money')}${tile('Pengeluaran lain', C.rp(m.expHarian), false, 't-money')}${tile('Biaya bulanan', C.rp(m.monthlyCost), false, 't-money')}</div>`;
+      if (m.extraIncome > 0) h += tile('Pemasukan tambahan (ongkir dll)', C.rp(m.extraIncome), false, 't-money');
       h += '<h3>Omzet dan margin per minggu</h3><div class="card">';
       const groups = {}; m.days.forEach((d) => { const k = C.mondayOf(d.date); (groups[k] = groups[k] || []).push(d); });
       st.f.wk = st.f.wk || {};
@@ -377,7 +378,7 @@
       if (st.f.unpaid) h += m.unpaid.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((o) => `<div class="row ln"><span>${esc(o.customer)} · ${C.dayShort(o.date)}</span><b>${C.rp(C.orderTotal(o))}</b></div>`).join('');
       h += '</div>';
     }
-    return h + '<button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
+    return h + '<button class="btn" data-a="plstart">Konfirmasi Pembayaran Customer</button><button class="btn o" data-a="exportxls">Export laporan ke Excel (bulan, minggu, hari, pengeluaran)</button>';
   }
 
   function vCustomer(rm) {
@@ -503,6 +504,47 @@
       <div class="row"><span class="mu">Total tambahan</span><b>${C.rp(m.q * (+m.p || 0))}</b></div><p class="mu sm">Masuk ke omzet hari itu.</p>
       ${m.err ? `<p class="err">${esc(m.err)}</p>` : ''}<div class="btns"><button class="btn" data-a="xsave">Simpan pesanan</button><button class="btn o" data-a="mcancel">Batal</button></div>`);
   }
+  // ---------- konfirmasi pembayaran ----------
+  function vPelunasan() {
+    const rm = st.repMonth || (st.repMonth = C.firstOfMonth(today()));
+    const mon = C.monthAbbr(rm);
+    let h = `<div class="back"><button class="link" data-a="back">‹ Kembali</button><h2>Konfirmasi Pembayaran</h2><p class="mu">Pelunasan customer per minggu</p></div>`;
+    h += nav(C.monthName(rm), '', 'mprev', 'mnext');
+    C.confirmWeeks(D(), rm).forEach((w, i) => {
+      h += `<h3>${mon} - Week ${i + 1} (tgl ${C.dayNum(w.week)} sampai tgl ${C.dayNum(w.end)} ${C.monthAbbr(w.end)})</h3>`;
+      if (!w.rows.length) { h += '<p class="mu">Tidak ada order di minggu ini.</p>'; return; }
+      h += '<div class="card">';
+      w.rows.forEach((r, j) => {
+        const s = r.settlement; const k = r.key + '|' + w.week;
+        const pm = (s && s.pm) || r.orders.map((o) => o.pm).filter((x) => x).filter((x, a, b) => b.indexOf(x) === a).join('/');
+        const ex = s ? (s.inc || []).reduce((t, x) => t + (+x.a || 0), 0) : 0;
+        h += `<div class="row ln"><div><b>${j + 1}. ${esc(r.name)}</b><div class="mu">Tagihan ${C.rp(r.bill)}</div>`;
+        if (!r.unpaid) {
+          h += `<span class="tag ok">Lunas${pm ? ' · ' + esc(pm) : ''}</span>`;
+          if (ex > 0) h += `<div class="mu">+ ${C.rp(ex)} (${esc(s.inc.map((x) => x.r).join(', '))})</div>`;
+          if (s && s.note) h += `<div class="mu">Catatan: ${esc(s.note)}</div>`;
+        } else if (r.unpaid !== r.bill) h += `<div class="mu">Sisa belum lunas ${C.rp(r.unpaid)}</div>`;
+        h += '</div><div class="col">';
+        if (!r.unpaid) h += `<button class="link" data-a="plopen" data-v="${esc(k)}">Ubah</button><button class="link" data-a="plundo" data-v="${esc(k)}">Batalkan lunas</button>`;
+        else h += `<button class="btn sm" data-a="plopen" data-v="${esc(k)}">Submit pelunasan</button>`;
+        h += '</div></div>';
+      });
+      h += `<div class="row"><span class="mu">Belum lunas minggu ini</span><b>${C.rp(w.unpaid)}</b></div></div>`;
+    });
+    return h;
+  }
+  function plRow(i, r) {
+    return `<div class="plinc"><div class="chips">${['Ongkir', 'Tip', 'Lainnya'].map((n) => chip(n, r.reason === n, 'plreason', i + '|' + n)).join('')}</div>${r.reason === 'Lainnya' ? field('Alasan', 'm.c' + i, r.custom || '', 'placeholder="mis. biaya packing"') : ''}<div class="two">${field('Jumlah (Rp)', 'm.a' + i, r.amount || '', 'inputmode="numeric" data-num="1"')}<button class="link" data-a="pldelrow" data-v="${i}">Hapus</button></div></div>`;
+  }
+  function plModal() {
+    const m = st.m;
+    openModal(`<h3>${m.edit ? 'Ubah pelunasan' : 'Submit pelunasan'}</h3><p><b>${esc(m.name)}</b> · Tagihan ${C.rp(m.bill)}</p><div class="mu">Dibayar via</div><div class="chips">${['Cash', 'Transfer', 'Lainnya'].map((n) => chip(n, m.method === n, 'plmethod', n)).join('')}</div>${m.method === 'Lainnya' ? field('Metode lain', 'm.custom', m.custom || '', 'placeholder="mis. QRIS, GoPay"') : ''}<div class="mu">Pemasukan tambahan (opsional)</div>${m.rows.map((r, i) => plRow(i, r)).join('')}<button class="link" data-a="pladdrow">+ Tambah pemasukan tambahan</button>${field('Catatan (opsional)', 'm.note', m.note || '', 'placeholder="mis. dibayar Pak Budi"')}<div class="row"><button class="btn o" data-a="mclose">Batal</button><button class="btn" data-a="plsave"${m.method ? '' : ' disabled'}>Simpan</button></div>`);
+  }
+  function plFind(v) {
+    const i = v.lastIndexOf('|'); const key = v.substring(0, i), wk = v.substring(i + 1);
+    return C.confirmWeeks(D(), wk).map((w) => w.rows.find((r) => r.key === key && r.week === wk)).find((x) => x);
+  }
+
   function devModal(err) {
     openModal(`<h3>Login developer</h3><label class="fld"><span>Password</span><input class="in" type="password" data-bind="m.p" id="devpass"></label>${err ? '<p class="err">Password salah.</p>' : ''}<div class="btns"><button class="btn" data-a="devok">Masuk</button><button class="btn o" data-a="mcancel">Batal</button></div>`);
     st.m = st.m || {};
@@ -517,6 +559,7 @@
     if (st.route) {
       if (st.route.name === 'order') return vOrderForm(me);
       if (st.route.name === 'detail') return vDetail(me);
+      if (st.route.name === 'pelunasan') return vPelunasan(me);
     }
     switch (st.tab) {
       case 'belanja': return vBelanja(me);
@@ -651,6 +694,37 @@
     neworder() { orderFormInit(null, st.orderDate); render(); },
     editorder(v) { const o = D().orders.find((x) => x.id === v); if (o) { orderFormInit(v, o.date); render(); } },
     cuopen(v) { st.f.cu = st.f.cu || {}; st.f.cu[v] = !st.f.cu[v]; keepRender(); },
+    plstart() { st.route = { name: 'pelunasan' }; render(); window.scrollTo(0, 0); },
+    plopen(v) {
+      const r = plFind(v); if (!r) return; const s = r.settlement; const known = ['Cash', 'Transfer'];
+      const old = (s && s.pm) || (r.orders.find((o) => o.pm) || {}).pm || '';
+      st.m = { key: r.key, week: r.week, name: r.name, bill: r.bill, edit: !r.unpaid, method: known.indexOf(old) >= 0 ? old : (old ? 'Lainnya' : ''), custom: known.indexOf(old) >= 0 ? '' : old, note: s ? s.note || '' : '',
+        rows: s ? (s.inc || []).map((x) => (x.r === 'Ongkir' || x.r === 'Tip' ? { reason: x.r, custom: '', amount: String(x.a) } : { reason: 'Lainnya', custom: x.r, amount: String(x.a) })) : [] };
+      plModal();
+    },
+    plmethod(v) { st.m.method = v; plModal(); },
+    plreason(v) { const i = v.indexOf('|'); st.m.rows[+v.substring(0, i)].reason = v.substring(i + 1); plModal(); },
+    pladdrow() { st.m.rows.push({ reason: 'Ongkir', custom: '', amount: '' }); plModal(); },
+    pldelrow(v) { st.m.rows.splice(+v, 1); plModal(); },
+    mclose() { closeModal(); },
+    plsave() {
+      const m = st.m; if (!m || !m.method) return; const me = getMe();
+      const method = m.method === 'Lainnya' ? ((m.custom || '').trim() || 'Lainnya') : m.method;
+      const r = plFind(m.key + '|' + m.week); if (!r) return;
+      const inc = m.rows.map((x) => ({ r: x.reason === 'Lainnya' ? ((x.custom || '').trim() || 'Lainnya') : x.reason, a: +x.amount || 0 })).filter((x) => x.a > 0);
+      Store.put({ t: 's', id: C.settleId(m.key, m.week), key: m.key, name: r.name, week: m.week, pm: method, note: (m.note || '').trim(), ts: Date.now(), by: me.name, inc, del: false });
+      r.orders.forEach((o) => Store.put(Object.assign({}, o, { paid: true, pm: method })));
+      const ex = inc.length ? ' · Tambahan ' + C.rp(inc.reduce((t, x) => t + x.a, 0)) + ' (' + inc.map((x) => x.r).join(', ') + ')' : '';
+      log(me, 'Order', (r.settlement ? 'Ubah pelunasan ' : 'Pelunasan ') + r.name + ' · Week ' + C.weekNo(m.week), C.rp(r.bill) + ' · via ' + method + ex + (m.note && m.note.trim() ? '\nCatatan: ' + m.note.trim() : ''));
+      closeModal(); keepRender();
+    },
+    plundo(v) {
+      const r = plFind(v); if (!r || !confirm('Batalkan lunas ' + r.name + '? Pemasukan tambahan ikut dihapus.')) return;
+      if (r.settlement) Store.put(Object.assign({}, r.settlement, { del: true }));
+      r.orders.forEach((o) => Store.put(Object.assign({}, o, { paid: false, pm: '' })));
+      log(getMe(), 'Order', 'Batal pelunasan ' + r.name + ' · Week ' + C.weekNo(r.week), r.orders.length + ' order kembali Belum bayar');
+      keepRender();
+    },
     paystart(v) { st.f.pay = { k: v, method: '', custom: '' }; keepRender(); },
     paymethod(v) { if (st.f.pay) st.f.pay.method = v; keepRender(); },
     paycancel() { st.f.pay = null; keepRender(); },
@@ -667,6 +741,7 @@
       const i = v.lastIndexOf('|'); const key = v.substring(0, i), wk = v.substring(i + 1);
       const list = D().orders.filter((o) => o.customer.trim().toLowerCase() === key && C.mondayOf(o.date) === wk && o.paid && C.orderTotal(o) > 0);
       list.forEach((o) => Store.put(Object.assign({}, o, { paid: false, pm: '' })));
+      { const sid = C.settleId(key, wk); const so = D().settlements.find((x) => x.id === sid); if (so) Store.put(Object.assign({}, so, { del: true })); }
       if (list.length) log(getMe(), 'Order', 'Batal lunas ' + list[0].customer + ' · Week ' + C.weekNo(wk), list.length + ' order kembali Belum bayar');
       keepRender();
     },
@@ -748,7 +823,7 @@
     const parts = key.split('.'); const ns = parts[0], k = parts[1];
     if (el && el.getAttribute('data-num')) { val = digits(val); if (el.value !== val) el.value = val; }
     if (ns === 'of') st.f.of[k] = val;
-    else if (ns === 'm') st.m[k] = val;
+    else if (ns === 'm') { if (/^c\d+$/.test(k)) st.m.rows[+k.substring(1)].custom = val; else if (/^a\d+$/.test(k)) st.m.rows[+k.substring(1)].amount = val; else st.m[k] = val; }
     else if (ns === 'pay') { if (st.f.pay) st.f.pay[k] = val; }
     else if (ns === 'mn') { if (/^l\d+$/.test(k)) st.f.mn.lines[+k.substring(1)] = val; else st.f.mn[k] = val; }
     else if (ns === 'ku') { if (/^n\d+$/.test(k)) st.f.ku.users[+k.substring(1)].name = val; else st.f.ku[k] = val; }

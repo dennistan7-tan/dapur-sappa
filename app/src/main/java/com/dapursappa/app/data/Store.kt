@@ -97,6 +97,7 @@ object Store {
         val expenses = ArrayList<Expense>()
         val audits = ArrayList<Audit>()
         var users = defaultUsers()
+        val settlements = ArrayList<Settlement>()
         for (o in recs.values) {
             try {
                 when (o.optString("t")) {
@@ -105,6 +106,7 @@ object Store {
                     "m" -> { val x = Menu.from(o); menus[x.week] = x }
                     "e" -> { val x = Expense.from(o); if (!x.deleted) expenses.add(x) }
                     "a" -> { audits.add(Audit.from(o)) }
+                    "s" -> { val x = Settlement.from(o); if (!x.deleted) settlements.add(x) }
                     "c" -> { users = usersFromJson(o) }
                 }
             } catch (e: Exception) {
@@ -112,6 +114,6 @@ object Store {
             }
         }
         audits.sortByDescending { it.ts }
-        state.value = AppData(purchases, orders, menus, expenses, audits, users)
+        state.value = AppData(purchases, orders, menus, expenses, audits, users, settlements)
     }
 }

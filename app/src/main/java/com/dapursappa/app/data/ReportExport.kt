@@ -25,25 +25,25 @@ object ReportExport {
 
         // ===== Per bulan
         val mh = listOf<Any?>("Bulan", "Total pax", "Omzet", "Belanja bahan", "Kemasan", "Modal (bahan+kemasan)", "Pengeluaran harian",
-            "Gross profit", "Margin gross", "Biaya bulanan", "Profit bersih", "Margin bersih", "Modal per porsi", "Harga jual rata-rata per porsi")
+            "Gross profit", "Margin gross", "Biaya bulanan", "Pemasukan tambahan", "Profit bersih", "Margin bersih", "Modal per porsi", "Harga jual rata-rata per porsi")
         val mrows = ArrayList<List<Any?>>(); mrows.add(mh)
         var m = from.withDayOfMonth(1)
-        var tp = 0; var tr = 0L; var tb = 0L; var tk = 0L; var te = 0L; var tm = 0L
+        var tp = 0; var tr = 0L; var tb = 0L; var tk = 0L; var te = 0L; var tm = 0L; var tx = 0L
         while (!m.isAfter(to)) {
             val mc = Calc.month(d, m)
             val gross = mc.revenue - mc.modal - mc.expHarian
-            if (mc.revenue > 0 || mc.modal > 0 || mc.expHarian > 0 || mc.monthlyCost > 0) {
+            if (mc.revenue > 0 || mc.modal > 0 || mc.expHarian > 0 || mc.monthlyCost > 0 || mc.extraIncome > 0) {
                 mrows.add(listOf(Fmt.monthName(m), mc.pax, mc.revenue, mc.bahanCost, mc.kemasanCost, mc.modal, mc.expHarian,
-                    gross, pct(gross, mc.revenue), mc.monthlyCost, mc.profit, pct(mc.profit, mc.revenue), per(mc.modal, mc.pax), per(mc.revenue, mc.pax)))
-                tp += mc.pax; tr += mc.revenue; tb += mc.bahanCost; tk += mc.kemasanCost; te += mc.expHarian; tm += mc.monthlyCost
+                    gross, pct(gross, mc.revenue), mc.monthlyCost, mc.extraIncome, mc.profit, pct(mc.profit, mc.revenue), per(mc.modal, mc.pax), per(mc.revenue, mc.pax)))
+                tp += mc.pax; tr += mc.revenue; tb += mc.bahanCost; tk += mc.kemasanCost; te += mc.expHarian; tm += mc.monthlyCost; tx += mc.extraIncome
             }
             m = m.plusMonths(1)
         }
         val tmod = tb + tk; val tg = tr - tmod - te
         mrows.add(listOf(XC("TOTAL", 5), XC(tp, 4), XC(tr, 4), XC(tb, 4), XC(tk, 4), XC(tmod, 4), XC(te, 4), XC(tg, 4),
-            XC(if (tr > 0) tg.toDouble() / tr else "", 3), XC(tm, 4), XC(tg - tm, 4), XC(if (tr > 0) (tg - tm).toDouble() / tr else "", 3),
+            XC(if (tr > 0) tg.toDouble() / tr else "", 3), XC(tm, 4), XC(tx, 4), XC(tg - tm + tx, 4), XC(if (tr > 0) (tg - tm + tx).toDouble() / tr else "", 3),
             XC(if (tp > 0) Math.round(tmod.toDouble() / tp) else "", 4), XC(if (tp > 0) Math.round(tr.toDouble() / tp) else "", 4)))
-        out.add(XSheet("Per Bulan", listOf(18, 10, 14, 14, 12, 16, 16, 14, 10, 14, 14, 10, 14, 18), mrows))
+        out.add(XSheet("Per Bulan", listOf(18, 10, 14, 14, 12, 16, 16, 14, 10, 14, 14, 14, 10, 14, 18), mrows))
 
         // ===== Per minggu
         val wh = listOf<Any?>("Minggu ke", "Periode", "Total pax", "Omzet", "Belanja bahan", "Kemasan", "Modal (bahan+kemasan)",

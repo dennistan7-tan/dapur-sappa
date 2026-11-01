@@ -40,8 +40,20 @@ data class MonthCalc(
     val profit: Long,
     val pax: Int,
     val unpaidOrders: List<Order>,
+    val extraIncome: Long = 0,
 ) {
     val modal: Long get() = bahanCost + kemasanCost
+}
+
+/** Satu baris di layar Konfirmasi Pembayaran: customer x minggu. */
+data class ConfCust(
+    val key: String, val name: String, val week: LocalDate, val orders: List<Order>,
+    val bill: Long, val unpaid: Long, val settlement: Settlement?,
+) { val paid: Boolean get() = unpaid == 0L }
+
+data class ConfWeek(val week: LocalDate, val rows: List<ConfCust>) {
+    val bill: Long get() = rows.sumOf { it.bill }
+    val unpaid: Long get() = rows.sumOf { it.unpaid }
 }
 
 data class CustWeek(
@@ -90,6 +102,25 @@ object Calc {
             CustCalc(key, os.first().customer.trim(), os, os.sumOf { it.portions }, revenue, Math.round(revenue - cost), weeks)
         }.sortedWith(compareByDescending<CustCalc> { it.revenue }.thenBy { it.name })
         return CustSummary(list)
+    }
+
+    /** Minggu (Senin) yang masuk bulan ini, tiap minggu berisi tagihan per customer. */
+    fun confirmWeeks(d: AppData, any: LocalDate): List<ConfWeek> {
+        val first = any.withDayOfMonth(1)
+        val out = ArrayList<ConfWeek>()
+        var mon = Fmt.mondayOf(first)
+        if (mon.month != first.month) mon = mon.plusWeeks(1)
+        while (mon.month == first.month) {
+            val a = mon.toString(); val b = mon.plusDays(6).toString()
+            val groups = d.orders.filter { it.date in a..b && it.total > 0 }.groupBy { it.customer.trim().lowercase() }
+            val rows = groups.map { (key, os) ->
+                ConfCust(key, os.first().customer.trim(), mon, os.sortedBy { it.date }, os.sumOf { it.total },
+                    os.filter { !it.paid }.sumOf { it.total }, d.settlements.firstOrNull { it.id == Settlement.idOf(key, a) })
+            }.sortedBy { it.name.lowercase() }
+            out.add(ConfWeek(mon, rows))
+            mon = mon.plusWeeks(1)
+        }
+        return out
     }
 
     fun menuOf(d: AppData, date: LocalDate): Menu? = d.menus[Fmt.mondayOf(date).toString()]
@@ -179,10 +210,11 @@ object Calc {
         val monthlyCost = lines.values.sum()
         val rev = days.sumOf { it.revenue }
         val unpaid = d.orders.filter { it.date.startsWith(prefix) && !it.paid && it.total > 0 }
+        val extra = d.settlements.filter { it.week.startsWith(prefix) }.sumOf { it.extra }
         return MonthCalc(
             first, days, rev, days.sumOf { it.bahanCost }, days.sumOf { it.kemasanCost },
             days.sumOf { it.expCost }, lines.toList(), monthlyCost,
-            days.sumOf { it.profit } - monthlyCost, days.sumOf { it.pax }, unpaid,
+            days.sumOf { it.profit } - monthlyCost + extra, days.sumOf { it.pax }, unpaid, extra,
         )
     }
 }

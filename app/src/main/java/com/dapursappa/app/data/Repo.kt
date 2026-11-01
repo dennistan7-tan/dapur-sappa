@@ -72,9 +72,37 @@ object Repo {
         if (list.isEmpty()) return
         list.forEach { Store.put(it.copy(paid = paid, payMethod = if (paid) method else "").toJson()) }
         val f = list.first()
+        if (!paid) {
+            val key = f.customer.trim().lowercase()
+            val mon = Fmt.mondayOf(LocalDate.parse(f.date)).toString()
+            Store.put(Settlement(Settlement.idOf(key, mon), key, f.customer.trim(), mon, "", "", System.currentTimeMillis(), "", emptyList(), true).toJson())
+        }
         val wk = Fmt.weekNo(LocalDate.parse(f.date))
         if (paid) log(me, "Order", "Lunas ${f.customer} · Week $wk", "${list.size} order · ${Fmt.rp(list.sumOf { it.total })} · via $method")
         else log(me, "Order", "Batal lunas ${f.customer} · Week $wk", "${list.size} order kembali Belum bayar")
+    }
+
+    /** Konfirmasi pelunasan satu customer satu minggu; juga dipakai untuk mengubah pelunasan yang sudah ada. */
+    fun submitSettlement(c: ConfCust, method: String, note: String, incomes: List<Income>, me: Me) {
+        val a = c.week.toString()
+        val id = Settlement.idOf(c.key, a)
+        val old = c.settlement
+        val inc = incomes.filter { it.amount > 0 }
+        val who = if (me.isDev) "Developer" else me.name
+        Store.put(Settlement(id, c.key, c.name, a, method, note.trim(), System.currentTimeMillis(), who, inc).toJson())
+        c.orders.forEach { Store.put(it.copy(paid = true, payMethod = method).toJson()) }
+        val wk = Fmt.weekNo(c.week)
+        val ex = if (inc.isNotEmpty()) " · Tambahan ${Fmt.rp(inc.sumOf { it.amount })} (" + inc.joinToString(", ") { it.reason } + ")" else ""
+        val nt = if (note.isNotBlank()) "\nCatatan: ${note.trim()}" else ""
+        log(me, "Order", (if (old == null) "Pelunasan " else "Ubah pelunasan ") + "${c.name} · Week $wk",
+            "${Fmt.rp(c.bill)} · via $method$ex$nt")
+    }
+
+    fun cancelSettlement(c: ConfCust, me: Me) {
+        val a = c.week.toString()
+        c.settlement?.let { Store.put(it.copy(deleted = true).toJson()) }
+        c.orders.forEach { Store.put(it.copy(paid = false, payMethod = "").toJson()) }
+        log(me, "Order", "Batal pelunasan ${c.name} · Week ${Fmt.weekNo(c.week)}", "${c.orders.size} order kembali Belum bayar")
     }
 
     fun deleteOrder(o: Order, me: Me) {

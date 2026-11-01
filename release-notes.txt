@@ -1,3 +1,4 @@
-Dapur Sappa v0.4.14
-- Perbaikan: aplikasi crash saat zoom tabel dilepas
-- Summary: tampilan stok kemasan dihapus (Gross Profit kembali selebar penuh)
+Dapur Sappa v0.4.15
+- Baru: Laporan > Konfirmasi Pembayaran Customer (pelunasan per minggu, metode bayar, pemasukan tambahan, catatan)
+- Pelunasan bisa diubah atau dibatalkan; laporan harian ikut lunas
+- Pemasukan tambahan masuk profit bulanan dan export Excel

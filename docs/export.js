@@ -81,19 +81,19 @@
     const out = [];
 
     // bulan
-    let rows = [['Bulan', 'Total pax', 'Omzet', 'Belanja bahan', 'Kemasan', 'Modal (bahan+kemasan)', 'Pengeluaran harian', 'Gross profit', 'Margin gross', 'Biaya bulanan', 'Profit bersih', 'Margin bersih', 'Modal per porsi', 'Harga jual rata-rata per porsi']];
-    let m = C.firstOfMonth(from); let tp = 0, tr = 0, tb = 0, tk = 0, te = 0, tm = 0;
+    let rows = [['Bulan', 'Total pax', 'Omzet', 'Belanja bahan', 'Kemasan', 'Modal (bahan+kemasan)', 'Pengeluaran harian', 'Gross profit', 'Margin gross', 'Biaya bulanan', 'Pemasukan tambahan', 'Profit bersih', 'Margin bersih', 'Modal per porsi', 'Harga jual rata-rata per porsi']];
+    let m = C.firstOfMonth(from); let tp = 0, tr = 0, tb = 0, tk = 0, te = 0, tm = 0, tx = 0;
     while (m <= to) {
       const mc = C.month(d, m); const gross = mc.revenue - mc.modal - mc.expHarian;
-      if (mc.revenue > 0 || mc.modal > 0 || mc.expHarian > 0 || mc.monthlyCost > 0) {
-        rows.push([C.monthName(m), mc.pax, mc.revenue, mc.bahanCost, mc.kemasanCost, mc.modal, mc.expHarian, gross, pctC(gross, mc.revenue), mc.monthlyCost, mc.profit, pctC(mc.profit, mc.revenue), per(mc.modal, mc.pax), per(mc.revenue, mc.pax)]);
-        tp += mc.pax; tr += mc.revenue; tb += mc.bahanCost; tk += mc.kemasanCost; te += mc.expHarian; tm += mc.monthlyCost;
+      if (mc.revenue > 0 || mc.modal > 0 || mc.expHarian > 0 || mc.monthlyCost > 0 || mc.extraIncome > 0) {
+        rows.push([C.monthName(m), mc.pax, mc.revenue, mc.bahanCost, mc.kemasanCost, mc.modal, mc.expHarian, gross, pctC(gross, mc.revenue), mc.monthlyCost, mc.extraIncome, mc.profit, pctC(mc.profit, mc.revenue), per(mc.modal, mc.pax), per(mc.revenue, mc.pax)]);
+        tp += mc.pax; tr += mc.revenue; tb += mc.bahanCost; tk += mc.kemasanCost; te += mc.expHarian; tm += mc.monthlyCost; tx += mc.extraIncome;
       }
       m = C.addMonths(m, 1);
     }
     const tg = tr - tb - tk - te;
-    rows.push([TT('TOTAL'), T(tp), T(tr), T(tb), T(tk), T(tb + tk), T(te), T(tg), tr > 0 ? { v: tg / tr, s: 3 } : '', T(tm), T(tg - tm), tr > 0 ? { v: (tg - tm) / tr, s: 3 } : '', tp > 0 ? T(Math.round((tb + tk) / tp)) : '', tp > 0 ? T(Math.round(tr / tp)) : '']);
-    out.push({ name: 'Per Bulan', widths: [18, 10, 14, 14, 12, 16, 16, 14, 10, 14, 14, 10, 14, 18], rows });
+    rows.push([TT('TOTAL'), T(tp), T(tr), T(tb), T(tk), T(tb + tk), T(te), T(tg), tr > 0 ? { v: tg / tr, s: 3 } : '', T(tm), T(tx), T(tg - tm + tx), tr > 0 ? { v: (tg - tm + tx) / tr, s: 3 } : '', tp > 0 ? T(Math.round((tb + tk) / tp)) : '', tp > 0 ? T(Math.round(tr / tp)) : '']);
+    out.push({ name: 'Per Bulan', widths: [18, 10, 14, 14, 12, 16, 16, 14, 10, 14, 14, 14, 10, 14, 18], rows });
 
     // minggu
     rows = [['Minggu ke', 'Periode', 'Total pax', 'Omzet', 'Belanja bahan', 'Kemasan', 'Modal (bahan+kemasan)', 'Pengeluaran harian', 'Gross profit', 'Margin gross', 'Modal per porsi', 'Harga jual rata-rata per porsi']];
