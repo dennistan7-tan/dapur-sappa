@@ -144,7 +144,7 @@
   // ---------- shell ----------
   function tabsFor(me) {
     const all = [['menu', 'Menu dan harga'], ['belanja', 'Belanja'], ['order', 'Order'], ['summary', 'Summary'], ['laporan', 'Laporan'], ['brosur', 'Brosur menu'], ['riwayat', 'Riwayat']];
-    if (me.isDev) all.push(['kelola', 'Kelola user']);
+    if (me.isDev) { all.push(['analisis', 'Analisis menu']); all.push(['kelola', 'Kelola user']); }
     return all;
   }
   function shell(me, body) {
@@ -545,6 +545,20 @@
     return C.confirmWeeks(D(), wk).map((w) => w.rows.find((r) => r.key === key && r.week === wk)).find((x) => x);
   }
 
+  function vAnalisis() {
+    const a = C.menuAnalysis(D(), today()); const s = st.anSort || 0;
+    const items = a.items.slice().sort((x, y) => s === 1 ? (y.count - x.count || y.mpp - x.mpp) : s === 2 ? (y.pax - x.pax || y.mpp - x.mpp) : (y.mpp - x.mpp || y.count - x.count));
+    let h = '<h2>Analisis menu</h2><p class="mu">Hanya developer</p>';
+    h += tile('Margin rata-rata per pax (overall)', C.rp(a.mpp), true, 't-money');
+    h += `<div class="g4">${tile('Hari terhitung', String(a.days), false, 't-money')}${tile('Total pax', String(a.pax), false, 't-money')}${tile('Omzet', C.rp(a.revenue), false, 't-money')}${tile('Profit harian', C.rp(a.profit), false, 't-money')}</div>`;
+    h += `<h3>Ranking menu</h3><div class="chips">${chip('Margin/pax', s === 0, 'ansort', 0)}${chip('Paling sering', s === 1, 'ansort', 1)}${chip('Pax terbanyak', s === 2, 'ansort', 2)}</div><div class="card">`;
+    h += items.length ? items.map((m, i) => `<div class="row ln"><div><b>${i + 1}. ${esc(m.name)}</b><div class="mu">Dibuat ${m.count}× · ${m.pax} pax</div></div><div style="text-align:right"><b>${C.rp(m.mpp)}/pax</b><div class="mu">vs rata-rata ${m.mpp >= a.mpp ? '+' : '-'}${C.rp(Math.abs(m.mpp - a.mpp))}</div></div></div>`).join('') : '<p class="mu">Belum ada hari dengan order dan modal terinput.</p>';
+    h += '</div><h3>Daftar bahan belanja (A-Z)</h3><div class="card">';
+    const buy = C.buyList(D());
+    h += buy.length ? buy.map((b) => `<div class="row ln"><div><b>${esc(b.name)}</b><div class="mu">${b.times}× beli · ${b.units.map((u) => C.num(u.qty) + ' ' + esc(u.unit)).join(' + ')}</div></div><div style="text-align:right"><b>${C.rp(b.spend)}</b><div class="mu">${b.units.filter((u) => u.unit && u.qty > 0).map((u) => C.rp(u.unitPrice) + '/' + esc(u.unit)).join(' · ')}</div></div></div>`).join('') : '<p class="mu">Belum ada belanja.</p>';
+    return h + '</div><p class="mu sm">Margin per pax = profit harian ÷ pax di hari menu itu dibuat (sudah dikurangi bahan, kemasan, pengeluaran harian). Satu hari punya beberapa menu, jadi margin dibagi rata ke semua menu hari itu. Nasi putih tidak dihitung.</p>';
+  }
+
   function devModal(err) {
     openModal(`<h3>Login developer</h3><label class="fld"><span>Password</span><input class="in" type="password" data-bind="m.p" id="devpass"></label>${err ? '<p class="err">Password salah.</p>' : ''}<div class="btns"><button class="btn" data-a="devok">Masuk</button><button class="btn o" data-a="mcancel">Batal</button></div>`);
     st.m = st.m || {};
@@ -570,6 +584,7 @@
       case 'brosur': return vBrosur(me);
       case 'riwayat': return vRiwayat(me);
       case 'kelola': return vKelola(me);
+      case 'analisis': return me.isDev ? vAnalisis() : '';
     }
     return '';
   }
@@ -694,6 +709,7 @@
     neworder() { orderFormInit(null, st.orderDate); render(); },
     editorder(v) { const o = D().orders.find((x) => x.id === v); if (o) { orderFormInit(v, o.date); render(); } },
     cuopen(v) { st.f.cu = st.f.cu || {}; st.f.cu[v] = !st.f.cu[v]; keepRender(); },
+    ansort(v) { st.anSort = +v; keepRender(); },
     plstart() { st.route = { name: 'pelunasan' }; render(); window.scrollTo(0, 0); },
     plopen(v) {
       const r = plFind(v); if (!r) return; const s = r.settlement; const known = ['Cash', 'Transfer'];

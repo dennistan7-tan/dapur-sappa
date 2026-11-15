@@ -60,6 +60,7 @@ fun MoreTab(
     dark: Boolean,
     onDark: (Boolean) -> Unit,
     onBrosur: () -> Unit,
+    onAnalisis: () -> Unit = {},
 ) {
     val c = Sappa.c
     val ctx = LocalContext.current
@@ -104,6 +105,7 @@ fun MoreTab(
             }
         }
         MoreItem("Riwayat perubahan", null, onRiwayat)
+        if (me.isDev) MoreItem("Analisis menu", "Developer · margin per pax", onAnalisis)
         if (me.isDev) MoreItem("Kelola user", "Developer", onKelola)
 
         SectionTitle("Aplikasi")

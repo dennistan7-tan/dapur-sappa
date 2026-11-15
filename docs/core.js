@@ -227,6 +227,33 @@
     return out;
   };
 
+  C.menuAnalysis = function (d, today) {
+    const dates = Array.from(new Set(d.orders.map((o) => o.date).concat(d.purchases.map((p) => p.useDate)))).filter((x) => x && x <= today).sort();
+    let days = 0, pax = 0, revenue = 0, profit = 0; const acc = {};
+    dates.forEach((ds) => {
+      const dc = C.day(d, ds); if (!dc.pax || dc.cost <= 0) return;
+      days++; pax += dc.pax; revenue += dc.revenue; profit += dc.profit; const seen = {};
+      C.menuLines(dc.menuName).forEach((line) => {
+        const k = line.toLowerCase(); if (k === 'nasi putih' || k === 'nasi' || seen[k]) return; seen[k] = 1;
+        const a = acc[k] = acc[k] || { name: line, count: 0, pax: 0, profit: 0 }; a.count++; a.pax += dc.pax; a.profit += dc.profit;
+      });
+    });
+    const items = Object.keys(acc).map((k) => Object.assign(acc[k], { mpp: Math.round(acc[k].profit / acc[k].pax) }));
+    return { days, pax, revenue, profit, mpp: pax ? Math.round(profit / pax) : 0, items };
+  };
+
+  C.buyList = function (d) {
+    const g = {};
+    d.purchases.forEach((p) => { const k = p.name.trim().toLowerCase(); (g[k] = g[k] || []).push(p); });
+    return Object.keys(g).map((k) => {
+      const l = g[k]; const u = {};
+      l.forEach((p) => { const n = (p.unit || '').trim().toLowerCase(); const x = u[n] = u[n] || { unit: n, qty: 0, spend: 0 }; x.qty += +p.qty || 0; x.spend += +p.price || 0; });
+      const units = Object.keys(u).map((n) => Object.assign(u[n], { unitPrice: u[n].qty > 0 ? Math.round(u[n].spend / u[n].qty) : 0 })).sort((a, b) => b.spend - a.spend);
+      const nm = l[0].name.trim();
+      return { name: nm.charAt(0).toUpperCase() + nm.slice(1), times: l.length, spend: l.reduce((s, p) => s + (+p.price || 0), 0), units };
+    }).sort((a, b) => (a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1));
+  };
+
   C.menuOf = (d, date) => d.menus[C.mondayOf(date)] || null;
   C.menuRaw = (d, date) => { const m = C.menuOf(d, date); return m ? (m.days[C.dow(date) - 1] || '') : ''; };
   C.menuLines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter((x) => x);

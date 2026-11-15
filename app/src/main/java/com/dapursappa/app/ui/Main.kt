@@ -48,6 +48,7 @@ sealed class Route {
     object Kelola : Route()
     object Brosur : Route()
     object Pelunasan : Route()
+    object Analisis : Route()
 }
 
 @Composable
@@ -111,6 +112,7 @@ fun MainScreen(
                     Route.Riwayat -> RiwayatScreen(data) { route = null }
                     Route.Kelola -> KelolaUserScreen(me, data, prefs) { route = null }
                     Route.Brosur -> BrosurScreen(data) { route = null }
+                    Route.Analisis -> AnalisisScreen(data) { route = null }
                     Route.Pelunasan -> PelunasanScreen(me, data, repMonth, { repMonth = it.withDayOfMonth(1) }) { route = null }
                 }
             } else {
@@ -128,7 +130,7 @@ fun MainScreen(
                     Tab.LAINNYA -> MoreTab(
                         me, prefs, onSwitchUser,
                         { route = Route.MenuEdit }, { route = Route.Riwayat }, { route = Route.Kelola },
-                        dark, { onThemeMode(if (it) 2 else 1) }, { route = Route.Brosur },
+                        dark, { onThemeMode(if (it) 2 else 1) }, { route = Route.Brosur }, { route = Route.Analisis },
                     )
                 }
             }

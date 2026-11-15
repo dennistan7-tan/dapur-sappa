@@ -56,6 +56,20 @@ data class ConfWeek(val week: LocalDate, val rows: List<ConfCust>) {
     val unpaid: Long get() = rows.sumOf { it.unpaid }
 }
 
+data class MenuStat(val name: String, val count: Int, val pax: Int, val profit: Long, val dates: List<String>) {
+    val mpp: Long get() = if (pax > 0) Math.round(profit.toDouble() / pax) else 0L
+}
+
+data class MenuAnalysis(val days: Int, val pax: Int, val revenue: Long, val profit: Long, val items: List<MenuStat>) {
+    val mpp: Long get() = if (pax > 0) Math.round(profit.toDouble() / pax) else 0L
+}
+
+data class BuyUnit(val unit: String, val qty: Double, val spend: Long) {
+    val unitPrice: Long get() = if (qty > 0) Math.round(spend / qty) else 0L
+}
+
+data class BuyItem(val name: String, val kind: Kind, val times: Int, val spend: Long, val units: List<BuyUnit>)
+
 data class CustWeek(
     val week: LocalDate, val orders: List<Order>, val pax: Int, val revenue: Long,
     val unpaid: List<Order>, val methods: List<String>,
@@ -121,6 +135,38 @@ object Calc {
             mon = mon.plusWeeks(1)
         }
         return out
+    }
+
+    /** Analisis menu (developer): margin per pax per hari, dirata-rata per menu. Hanya hari berjalan dengan modal terinput. */
+    fun menuAnalysis(d: AppData, today: LocalDate): MenuAnalysis {
+        val dates = (d.orders.map { it.date } + d.purchases.map { it.useDate }).filter { it <= today.toString() }.distinct().sorted()
+        var days = 0; var pax = 0; var rev = 0L; var prof = 0L
+        val acc = LinkedHashMap<String, MutableList<DayCalc>>()
+        val names = HashMap<String, String>()
+        for (ds in dates) {
+            val dc = day(d, LocalDate.parse(ds))
+            if (dc.libur && dc.pax == 0 || dc.pax == 0 || dc.cost <= 0) continue
+            days++; pax += dc.pax; rev += dc.revenue; prof += dc.profit
+            val seen = HashSet<String>()
+            for (line in dc.menuName.lines().map { it.trim() }.filter { it.isNotEmpty() }) {
+                val k = line.lowercase()
+                if (k == "nasi putih" || k == "nasi" || !seen.add(k)) continue
+                names.putIfAbsent(k, line); acc.getOrPut(k) { ArrayList() }.add(dc)
+            }
+        }
+        val items = acc.map { (k, l) -> MenuStat(names[k] ?: k, l.size, l.sumOf { it.pax }, l.sumOf { it.profit }, l.map { it.date.toString() }) }
+        return MenuAnalysis(days, pax, rev, prof, items)
+    }
+
+    /** Daftar bahan belanja, satu baris per nama (urut abjad), dengan total qty, total biaya dan harga per satuan. */
+    fun buyList(d: AppData): List<BuyItem> {
+        val g = LinkedHashMap<String, MutableList<Purchase>>()
+        for (p in d.purchases) g.getOrPut(p.name.trim().lowercase()) { ArrayList() }.add(p)
+        return g.map { (_, l) ->
+            val units = l.groupBy { it.unit.trim().lowercase() }.map { (u, x) -> BuyUnit(u, x.sumOf { it.qty }, x.sumOf { it.price }) }
+                .sortedByDescending { it.spend }
+            BuyItem(l.first().name.trim().replaceFirstChar { it.uppercase() }, l.first().kind, l.size, l.sumOf { it.price }, units)
+        }.sortedBy { it.name.lowercase() }
     }
 
     fun menuOf(d: AppData, date: LocalDate): Menu? = d.menus[Fmt.mondayOf(date).toString()]

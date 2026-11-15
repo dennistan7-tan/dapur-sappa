@@ -1,4 +1,3 @@
-Dapur Sappa v0.4.15
-- Baru: Laporan > Konfirmasi Pembayaran Customer (pelunasan per minggu, metode bayar, pemasukan tambahan, catatan)
-- Pelunasan bisa diubah atau dibatalkan; laporan harian ikut lunas
-- Pemasukan tambahan masuk profit bulanan dan export Excel
+Dapur Sappa v0.4.16
+- Developer: Analisis menu (margin per pax, ranking menu, repeat menu, daftar bahan belanja A-Z dengan harga)
+- Konfirmasi Pembayaran Customer (pelunasan per minggu)
